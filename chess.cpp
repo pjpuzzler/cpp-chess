@@ -12,6 +12,7 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <iostream>
 #include <bit>
 #include <tuple>
+#include <regex>
 
 using namespace std;
 
@@ -37,18 +38,18 @@ string piece_name(PieceType piece_type)
 }
 
 const unordered_map<char, string> UNICODE_PIECE_SYMBOLS = {
-    {'R', "♖"},
-    {'r', "♜"},
-    {'N', "♘"},
-    {'n', "♞"},
-    {'B', "♗"},
-    {'b', "♝"},
-    {'Q', "♕"},
-    {'q', "♛"},
-    {'K', "♔"},
-    {'k', "♚"},
-    {'P', "♙"},
-    {'p', "♟"},
+    {'R', "♜"},
+    {'r', "♖"},
+    {'N', "♞"},
+    {'n', "♘"},
+    {'B', "♝"},
+    {'b', "♗"},
+    {'Q', "♛"},
+    {'q', "♕"},
+    {'K', "♚"},
+    {'k', "♔"},
+    {'P', "♟"},
+    {'p', "♙"},
 };
 
 const char FILE_NAMES[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
@@ -107,50 +108,51 @@ enum Termination
     // Enum with reasons for a game to be over.
 
     CHECKMATE = 1,
-    // See :func:`chess.Board.is_checkmate()`.
+    // See :func:`chess::Board::is_checkmate()`.
     CSTALEMATE = 2,
-    // See :func:`chess.Board.is_stalemate()`.
+    // See :func:`chess::Board::is_stalemate()`.
     CINSUFFICIENT_MATERIAL = 3,
-    // See :func:`chess.Board.is_insufficient_material()`.
+    // See :func:`chess::Board::is_insufficient_material()`.
     CSEVENTYFIVE_MOVES = 4,
-    // See :func:`chess.Board.is_seventyfive_moves()`.
+    // See :func:`chess::Board::is_seventyfive_moves()`.
     CFIVEFOLD_REPETITION = 5,
-    // See :func:`chess.Board.is_fivefold_repetition()`.
+    // See :func:`chess::Board::is_fivefold_repetition()`.
     CFIFTY_MOVES = 6,
-    // See :func:`chess.Board.can_claim_fifty_moves()`.
+    // See :func:`chess::Board::can_claim_fifty_moves()`.
     CTHREEFOLD_REPETITION = 7,
-    // See :func:`chess.Board.can_claim_threefold_repetition()`.
+    // See :func:`chess::Board::can_claim_threefold_repetition()`.
     CVARIANT_WIN = 8,
-    // See :func:`chess.Board.is_variant_win()`.
+    // See :func:`chess::Board::is_variant_win()`.
     CVARIANT_LOSS = 9,
-    // See :func:`chess.Board.is_variant_loss()`.
+    // See :func:`chess::Board::is_variant_loss()`.
     CVARIANT_DRAW = 10
-    // See :func:`chess.Board.is_variant_draw()`.
+    // See :func:`chess::Board::is_variant_draw()`.
 };
 
 class Outcome
 {
     /*
     Information about the outcome of an ended game, usually obtained from
-    :func:`chess.Board.outcome()`.
+    :func:`chess::Board::outcome()`.
     */
 
 public:
     Termination termination;
+    // The reason for the game to have ended.
+
     int winner;
+    // The winning color or ``-1`` if drawn.
 
     Outcome(Termination termination, int winner)
     {
-        termination = termination;
-        // The reason for the game to have ended.
-        winner = winner;
-        // The winning color or ``-1`` if drawn.
+        this->termination = termination;
+        this->winner = winner;
     }
 
-    string result()
+    string result() const
     {
         // Returns ``1-0``, ``0-1`` or ``1/2-1/2``.
-        return winner == -1 ? "1/2-1/2" : (winner ? "1-0" : "0-1");
+        return this->winner == -1 ? "1/2-1/2" : (this->winner ? "1-0" : "0-1");
     }
 };
 
@@ -167,11 +169,9 @@ Square parse_square(string name)
 
     :raises: :exc:`invalid_argument` if the square name is invalid.
     */
-    const auto it = find(SQUARE_NAMES, SQUARE_NAMES + sizeof(SQUARE_NAMES) / sizeof(SQUARE_NAMES[0]), name);
-
+    const auto &it = find(SQUARE_NAMES, SQUARE_NAMES + sizeof(SQUARE_NAMES) / sizeof(SQUARE_NAMES[0]), name);
     if (it == end(SQUARE_NAMES))
-        throw invalid_argument("");
-
+        throw invalid_argument("square name is invalid");
     return distance(SQUARE_NAMES, it);
 }
 
@@ -486,6 +486,325 @@ Bitboard between(Square a, Square b)
     Bitboard bb = BB_RAYS[a][b] & ((BB_ALL << a) ^ (BB_ALL << b));
     return bb & (bb - 1);
 }
+
+regex SAN_REGEX(R"(^([NBKRQ])?([a-h])?([1-8])?[\-x]?([a-h][1-8])(=?[nbrqkNBRQK])?[\+#]?$)");
+
+regex FEN_CASTLING_REGEX(R"(^(?:-|[KQABCDEFGH]{0,2}[kqabcdefgh]{0,2})$)");
+
+class Piece
+{
+    // A piece with type and color.
+
+public:
+    PieceType piece_type;
+    // The piece type.
+
+    Color color;
+    // The piece color.
+
+    Piece(PieceType piece_type, Color color)
+    {
+        this->piece_type = piece_type;
+        this->color = color;
+    }
+
+    char symbol() const
+    {
+        /*
+        Gets the symbol ``P``, ``N``, ``B``, ``R``, ``Q`` or ``K`` for white
+        pieces or the lower-case variants for the black pieces.
+        */
+        char symbol = piece_symbol(this->piece_type);
+        return this->color ? toupper(symbol) : symbol;
+    }
+
+    string unicode_symbol(bool invert_color = false, ...) const
+    {
+        /*
+        Gets the Unicode character for the piece.
+        */
+        char symbol = this->symbol();
+        if (invert_color)
+            symbol = isupper(symbol) ? tolower(symbol) : toupper(symbol);
+        return UNICODE_PIECE_SYMBOLS.at(symbol);
+    }
+
+    operator string() const
+    {
+        return to_string(this->symbol());
+    }
+
+    static Piece *from_symbol(char symbol)
+    {
+        /*
+        Creates a :class:`~chess::Piece` instance from a piece symbol.
+
+        :raises: :exc:`invalid_argument` if the symbol is invalid.
+        */
+        const auto &it = find(PIECE_SYMBOLS, PIECE_SYMBOLS + sizeof(PIECE_SYMBOLS) / sizeof(PIECE_SYMBOLS[0]), tolower(symbol));
+        if (it == end(PIECE_SYMBOLS))
+            throw invalid_argument("symbol is invalid");
+        return new Piece(distance(PIECE_SYMBOLS, it), toupper(symbol));
+    }
+};
+
+template <>
+struct hash<Piece>
+{
+    std::size_t operator()(const Piece &piece) const
+    {
+        return piece.piece_type + (piece.color ? -1 : 5);
+    }
+};
+
+class Move
+{
+    /*
+    Represents a move from a square to a square and possibly the promotion
+    piece type.
+
+    Drops and null moves are supported.
+    */
+
+public:
+    Square from_square;
+    // The source square.
+
+    Square to_square;
+    // The target square.
+
+    PieceType promotion;
+    // The promotion piece type or ``NULL``.
+
+    PieceType drop;
+    // The drop piece type or ``NULL``.
+
+    Move(Square from_square, Square to_square, PieceType promotion = NULL, PieceType drop = NULL)
+    {
+        this->from_square = from_square;
+        this->to_square = to_square;
+        this->promotion = promotion;
+        this->drop = drop;
+    }
+
+    string uci() const
+    {
+        /*
+        Gets a UCI string for the move.
+
+        For example, a move from a7 to a8 would be ``a7a8`` or ``a7a8q``
+        (if the latter is a promotion to a queen).
+
+        The UCI representation of a null move is ``0000``.
+        */
+        if (this->drop)
+            return to_string(toupper(piece_symbol(this->drop))) + "@" + SQUARE_NAMES[this->to_square];
+        else if (this->promotion)
+            return SQUARE_NAMES[this->from_square] + SQUARE_NAMES[this->to_square] + piece_symbol(this->promotion);
+        else if (*this)
+            return SQUARE_NAMES[this->from_square] + SQUARE_NAMES[this->to_square];
+        else
+            return "0000";
+    }
+
+    string xboard() const
+    {
+        return *this ? this->uci() : "@@@@";
+    }
+
+    operator bool() const
+    {
+        return this->from_square || this->to_square || this->promotion || this->drop;
+    }
+
+    operator string() const
+    {
+        return this->uci();
+    }
+
+    static Move *from_uci(string uci)
+    {
+        /*
+        Parses a UCI string.
+
+        :raises: :exc:`invalid_argument` if the UCI string is invalid.
+        */
+        if (uci == "0000")
+            return Move::null();
+        else if (uci.length() == 4 && '@' == uci[1])
+        {
+            const auto &it = find(PIECE_SYMBOLS, PIECE_SYMBOLS + sizeof(PIECE_SYMBOLS) / sizeof(PIECE_SYMBOLS[0]), tolower(uci[0]));
+            if (it == end(PIECE_SYMBOLS))
+                throw invalid_argument("uci string is invalid");
+            Square drop = distance(PIECE_SYMBOLS, it);
+            const auto &it2 = find(SQUARE_NAMES, SQUARE_NAMES + sizeof(SQUARE_NAMES) / sizeof(SQUARE_NAMES[0]), uci.substr(2));
+            if (it2 == end(SQUARE_NAMES))
+                throw invalid_argument("uci string is invalid");
+            Square square = distance(SQUARE_NAMES, it2);
+            return new Move(square, square, drop = drop);
+        }
+        else if (4 <= uci.length() && uci.length() <= 5)
+        {
+            const auto &it = find(SQUARE_NAMES, SQUARE_NAMES + sizeof(SQUARE_NAMES) / sizeof(SQUARE_NAMES[0]), uci.substr(0, 2));
+            if (it == end(SQUARE_NAMES))
+                throw invalid_argument("uci string is invalid");
+            Square from_square = distance(SQUARE_NAMES, it);
+            const auto &it2 = find(SQUARE_NAMES, SQUARE_NAMES + sizeof(SQUARE_NAMES) / sizeof(SQUARE_NAMES[0]), uci.substr(2, 4));
+            if (it2 == end(SQUARE_NAMES))
+                throw invalid_argument("uci string is invalid");
+            Square to_square = distance(SQUARE_NAMES, it2);
+            Square promotion;
+            if (uci.length() == 5)
+            {
+                const auto &it3 = find(PIECE_SYMBOLS, PIECE_SYMBOLS + sizeof(PIECE_SYMBOLS) / sizeof(PIECE_SYMBOLS[0]), uci[4]);
+                if (it3 == end(PIECE_SYMBOLS))
+                    throw invalid_argument("uci string is invalid");
+                promotion = distance(PIECE_SYMBOLS, it3);
+            }
+            else
+                promotion = NULL;
+            if (from_square == to_square)
+                throw invalid_argument("invalid uci (use 0000 for null moves): " + uci);
+            return new Move(from_square, to_square, promotion = promotion);
+        }
+        else
+            throw invalid_argument("expected uci string to be of length 4 or 5: " + uci);
+    }
+
+    static Move *null()
+    {
+        /*
+        Gets a null move.
+
+        A null move just passes the turn to the other side (and possibly
+        forfeits en passant capturing). Null moves evaluate to ``false`` in
+        boolean contexts.
+
+        >>> #include <chess>
+        >>>
+        >>> bool(chess::Move::null())
+        0
+        */
+        return new Move(0, 0);
+    }
+};
+
+class BaseBoard
+{
+    /*
+    A board representing the position of chess pieces. See
+    :class:`~chess::Board` for a full board with move generation.
+
+    The board is initialized with the standard chess starting position, unless
+    otherwise specified in the optional *board_fen* argument. If *board_fen*
+    is ``""``, an empty board is created.
+    */
+
+public:
+    Bitboard occupied_co[2] = {BB_EMPTY, BB_EMPTY};
+
+    BaseBoard(string board_fen = STARTING_BOARD_FEN)
+    {
+        // if (board_fen.empty())
+        //     this->_clear_board();
+        // else if (board_fen == STARTING_BOARD_FEN)
+        //     this->_reset_board();
+        // else
+        //     this->_set_board_fen(board_fen);
+    }
+
+    void reset_board()
+    {
+        // Resets pieces to the starting position.
+        this->_reset_board();
+    }
+
+    void clear_board()
+    {
+        // Clears the board.
+        this->_clear_board();
+    }
+
+    Bitboard pieces_mask(PieceType piece_type, Color color)
+    {
+        Bitboard bb;
+        if (piece_type == PAWN)
+            bb = this->pawns;
+        else if (piece_type == KNIGHT)
+            bb = this->knights;
+        else if (piece_type == BISHOP)
+            bb = this->bishops;
+        else if (piece_type == ROOK)
+            bb = this->rooks;
+        else if (piece_type == QUEEN)
+            bb = this->queens;
+        else if (piece_type == KING)
+            bb = this->kings;
+        else
+            throw "expected PieceType, got {piece_type!r}";
+
+        return bb & this->occupied_co[color];
+    }
+
+    SquareSet *pieces(PieceType piece_type, Color color)
+    {
+        /*
+        Gets pieces of the given type and color.
+
+        Returns a :class:`set of squares <chess::SquareSet>`.
+        */
+        return new SquareSet(this->pieces_mask(piece_type, color));
+    }
+
+    Piece *piece_at(Square square)
+    {
+        // Gets the :class:`piece <chess::Piece>` at the given square.
+        PieceType piece_type = this->piece_type_at(square);
+        if (piece_type)
+        {
+            Bitboard mask = BB_SQUARES[square];
+            Color color = bool(this->occupied_co[WHITE] & mask);
+            return new Piece(piece_type, color);
+        }
+        else
+            return NULL;
+    }
+
+private:
+    void _reset_board()
+    {
+        this->pawns = BB_RANK_2 | BB_RANK_7;
+        this->knights = BB_B1 | BB_G1 | BB_B8 | BB_G8;
+        this->bishops = BB_C1 | BB_F1 | BB_C8 | BB_F8;
+        this->rooks = BB_CORNERS;
+        this->queens = BB_D1 | BB_D8;
+        this->kings = BB_E1 | BB_E8;
+
+        this->promoted = BB_EMPTY;
+
+        this->occupied_co[WHITE] = BB_RANK_1 | BB_RANK_2;
+        this->occupied_co[BLACK] = BB_RANK_7 | BB_RANK_8;
+        this->occupied = BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8;
+    }
+
+    void _clear_board()
+    {
+        this->pawns = BB_EMPTY;
+        this->knights = BB_EMPTY;
+        this->bishops = BB_EMPTY;
+        this->rooks = BB_EMPTY;
+        this->queens = BB_EMPTY;
+        this->kings = BB_EMPTY;
+
+        this->promoted = BB_EMPTY;
+
+        this->occupied_co[WHITE] = BB_EMPTY;
+        this->occupied_co[BLACK] = BB_EMPTY;
+        this->occupied = BB_EMPTY;
+    }
+};
+
+typedef BaseBoard BaseBoardT;
 
 int main()
 {
