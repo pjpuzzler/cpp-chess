@@ -1,50 +1,100 @@
+// This is a complete remake of niklasf's python-chess in C++. The original version can be found here: https://github.com/niklasf/python-chess.
+
+#include <string>
+#include <unordered_map>
+
 #include <iostream>
 
 using namespace std;
 
-typedef int Board[8][8], PieceType, Square, Rank, File;
+typedef string _EnPassantSpec;
+
 typedef bool Color;
+const Color COLORS[] = {true, false}, WHITE = true, BLACK = false;
+const string COLOR_NAMES[] = {"black", "white"};
 
-const Color WHITE = true, BLACK = false;
-const PieceType PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
-const Square A1 = 0, A2 = 1, A3 = 2, A4 = 3, A5 = 4, A6 = 5, A7 = 6, A8 = 7, B1 = 8, B2 = 9, B3 = 10, B4 = 11, B5 = 12, B6 = 13, B7 = 14, B8 = 15, C1 = 16, C2 = 17, C3 = 18, C4 = 19, C5 = 20, C6 = 21, C7 = 22, C8 = 23, D1 = 24, D2 = 25, D3 = 26, D4 = 27, D5 = 28, D6 = 29, D7 = 30, D8 = 31, E1 = 32, E2 = 33, E3 = 34, E4 = 35, E5 = 36, E6 = 37, E7 = 38, E8 = 39, F1 = 40, F2 = 41, F3 = 42, F4 = 43, F5 = 44, F6 = 45, F7 = 46, F8 = 47, G1 = 48, G2 = 49, G3 = 50, G4 = 51, G5 = 52, G6 = 53, G7 = 54, G8 = 55, H1 = 56, H2 = 57, H3 = 58, H4 = 59, H5 = 60, H6 = 61, H7 = 62, H8 = 63;
+typedef int PieceType;
+const PieceType PIECE_TYPES[] = {1, 2, 3, 4, 5, 6}, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
+char PIECE_SYMBOLS[] = {'\0', 'p', 'n', 'b', 'r', 'q', 'k'};
+string PIECE_NAMES[] = {"", "pawn", "knight", "bishop", "rook", "queen", "king"};
 
-class Piece
+char pieceSymbol(PieceType pieceType)
 {
-public:
-    PieceType pieceType;
-    Color color;
+    return PIECE_SYMBOLS[pieceType];
+}
 
-    Piece(PieceType pieceType, Color color)
-    {
-        pieceType = pieceType;
-        color = color;
-    }
+string pieceName(PieceType pieceType)
+{
+    return PIECE_NAMES[pieceType];
+}
+
+const unordered_map<char, string> UNICODE_PIECE_SYMBOLS = {
+    {'R', "♖"},
+    {'r', "♜"},
+    {'N', "♘"},
+    {'n', "♞"},
+    {'B', "♗"},
+    {'b', "♝"},
+    {'Q', "♕"},
+    {'q', "♛"},
+    {'K', "♔"},
+    {'k', "♚"},
+    {'P', "♙"},
+    {'p', "♟"},
 };
 
-class Chess
+const char FILE_NAMES[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+
+const char RANK_NAMES[] = {'1', '2', '3', '4', '5', '6', '7', '8'};
+
+const string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+// The FEN for the standard chess starting position.
+
+const string STARTING_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+// The board part of the FEN for the standard chess starting position.
+
+class Status
 {
 public:
-    Board board;
-    Color turn;
-
-    Chess()
-    {
-    }
-
-    bool isCheck()
-    {
-        // Tests if the current side to move is in check.
-    }
-
-    bool isAttackedBy(Color color, Square square)
-    {
-        // Checks if the given side attacks the given square.
-        // Pinned pieces still count as attackers. Pawns that can be captured en passant are not considered attacked.
-    }
+    const static int VALID = 0;
+    const static int NO_WHITE_KING = 1 << 0;
+    const static int NO_BLACK_KING = 1 << 1;
+    const static int TOO_MANY_KINGS = 1 << 2;
+    const static int TOO_MANY_WHITE_PAWNS = 1 << 3;
+    const static int TOO_MANY_BLACK_PAWNS = 1 << 4;
+    const static int PAWNS_ON_BACKRANK = 1 << 5;
+    const static int TOO_MANY_WHITE_PIECES = 1 << 6;
+    const static int TOO_MANY_BLACK_PIECES = 1 << 7;
+    const static int BAD_CASTLING_RIGHTS = 1 << 8;
+    const static int INVALID_EP_SQUARE = 1 << 9;
+    const static int OPPOSITE_CHECK = 1 << 10;
+    const static int EMPTY = 1 << 11;
+    const static int RACE_CHECK = 1 << 12;
+    const static int RACE_OVER = 1 << 13;
+    const static int RACE_MATERIAL = 1 << 14;
+    const static int TOO_MANY_CHECKERS = 1 << 15;
+    const static int IMPOSSIBLE_CHECK = 1 << 16;
 };
+
+const int STATUS_VALID = Status::VALID;
+const int STATUS_NO_WHITE_KING = Status::NO_WHITE_KING;
+const int STATUS_NO_BLACK_KING = Status::NO_BLACK_KING;
+const int STATUS_TOO_MANY_KINGS = Status::TOO_MANY_KINGS;
+const int STATUS_TOO_MANY_WHITE_PAWNS = Status::TOO_MANY_WHITE_PAWNS;
+const int STATUS_TOO_MANY_BLACK_PAWNS = Status::TOO_MANY_BLACK_PAWNS;
+const int STATUS_PAWNS_ON_BACKRANK = Status::PAWNS_ON_BACKRANK;
+const int STATUS_TOO_MANY_WHITE_PIECES = Status::TOO_MANY_WHITE_PIECES;
+const int STATUS_TOO_MANY_BLACK_PIECES = Status::TOO_MANY_BLACK_PIECES;
+const int STATUS_BAD_CASTLING_RIGHTS = Status::BAD_CASTLING_RIGHTS;
+const int STATUS_INVALID_EP_SQUARE = Status::INVALID_EP_SQUARE;
+const int STATUS_OPPOSITE_CHECK = Status::OPPOSITE_CHECK;
+const int STATUS_EMPTY = Status::EMPTY;
+const int STATUS_RACE_CHECK = Status::RACE_CHECK;
+const int STATUS_RACE_OVER = Status::RACE_OVER;
+const int STATUS_RACE_MATERIAL = Status::RACE_MATERIAL;
+const int STATUS_TOO_MANY_CHECKERS = Status::TOO_MANY_CHECKERS;
+const int STATUS_IMPOSSIBLE_CHECK = Status::IMPOSSIBLE_CHECK;
 
 int main()
 {
-    Chess chess;
 }
