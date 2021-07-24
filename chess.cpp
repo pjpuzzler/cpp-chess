@@ -22,7 +22,7 @@ typedef bool Color;
 const Color COLORS[] = {true, false}, WHITE = true, BLACK = false;
 const string COLOR_NAMES[] = {"black", "white"};
 
-typedef int PieceType;
+typedef uint8_t PieceType;
 const PieceType PIECE_TYPES[] = {1, 2, 3, 4, 5, 6}, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
 char PIECE_SYMBOLS[] = {'\0', 'p', 'n', 'b', 'r', 'q', 'k'};
 string PIECE_NAMES[] = {"", "pawn", "knight", "bishop", "rook", "queen", "king"};
@@ -140,10 +140,10 @@ public:
     Termination termination;
     // The reason for the game to have ended.
 
-    int winner;
+    int8_t winner;
     // The winning color or ``-1`` if drawn.
 
-    Outcome(Termination termination, int winner)
+    Outcome(Termination termination, int8_t winner)
     {
         this->termination = termination;
         this->winner = winner;
@@ -156,7 +156,7 @@ public:
     }
 };
 
-typedef int Square;
+typedef uint8_t Square;
 const Square SQUARES[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63}, A1 = 0, B1 = 1, C1 = 2, D1 = 3, E1 = 4, F1 = 5, G1 = 6, H1 = 7, A2 = 8, B2 = 9, C2 = 10, D2 = 11, E2 = 12, F2 = 13, G2 = 14, H2 = 15, A3 = 16, B3 = 17, C3 = 18, D3 = 19, E3 = 20, F3 = 21, G3 = 22, H3 = 23, A4 = 24, B4 = 25, C4 = 26, D4 = 27, E4 = 28, F4 = 29, G4 = 30, H4 = 31, A5 = 32, B5 = 33, C5 = 34, D5 = 35, E5 = 36, F5 = 37, G5 = 38, H5 = 39, A6 = 40, B6 = 41, C6 = 42, D6 = 43, E6 = 44, F6 = 45, G6 = 46, H6 = 47, A7 = 48, B7 = 49, C7 = 50, D7 = 51, E7 = 52, F7 = 53, G7 = 54, H7 = 55, A8 = 56, B8 = 57, C8 = 58, D8 = 59, E8 = 60, F8 = 61, G8 = 62, H8 = 63;
 
 const string SQUARE_NAMES[] = {"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"};
@@ -181,25 +181,25 @@ string square_name(Square square)
     return SQUARE_NAMES[square];
 }
 
-Square square(int file_index, int rank_index)
+Square square(uint8_t file_index, uint8_t rank_index)
 {
     // Gets a square number by file and rank index.
     return rank_index * 8 + file_index;
 }
 
-int square_file(Square square)
+uint8_t square_file(Square square)
 {
     // Gets the file index of the square where ``0`` is the a-file.
     return square & 7;
 }
 
-int square_rank(Square square)
+uint8_t square_rank(Square square)
 {
     // Gets the rank index of the square where ``0`` is the first rank.
     return square >> 3;
 }
 
-int square_distance(Square a, Square b)
+uint8_t square_distance(Square a, Square b)
 {
     /*
     Gets the distance (i.e., the number of king steps) from square *a* to *b*.
@@ -217,15 +217,15 @@ const Square SQUARES_180[] = {square_mirror(0), square_mirror(1), square_mirror(
 
 typedef unsigned long Bitboard;
 const Bitboard BB_EMPTY = 0;
-const Bitboard BB_ALL = 0xffffffffffffffff;
+const Bitboard BB_ALL = 0xffffffffffffffffUL;
 
 const Bitboard BB_SQUARES[] = {1UL << 0, 1UL << 1, 1UL << 2, 1UL << 3, 1UL << 4, 1UL << 5, 1UL << 6, 1UL << 7, 1UL << 8, 1UL << 9, 1UL << 10, 1UL << 11, 1UL << 12, 1UL << 13, 1UL << 14, 1UL << 15, 1UL << 16, 1UL << 17, 1UL << 18, 1UL << 19, 1UL << 20, 1UL << 21, 1UL << 22, 1UL << 23, 1UL << 24, 1UL << 25, 1UL << 26, 1UL << 27, 1UL << 28, 1UL << 29, 1UL << 30, 1UL << 31, 1UL << 32, 1UL << 33, 1UL << 34, 1UL << 35, 1UL << 36, 1UL << 37, 1UL << 38, 1UL << 39, 1UL << 40, 1UL << 41, 1UL << 42, 1UL << 43, 1UL << 44, 1UL << 45, 1UL << 46, 1UL << 47, 1UL << 48, 1UL << 49, 1UL << 50, 1UL << 51, 1UL << 52, 1UL << 53, 1UL << 54, 1UL << 55, 1UL << 56, 1UL << 57, 1UL << 58, 1UL << 59, 1UL << 60, 1UL << 61, 1UL << 62, 1UL << 63}, BB_A1 = 1UL << 0, BB_B1 = 1UL << 1, BB_C1 = 1UL << 2, BB_D1 = 1UL << 3, BB_E1 = 1UL << 4, BB_F1 = 1UL << 5, BB_G1 = 1UL << 6, BB_H1 = 1UL << 7, BB_A2 = 1UL << 8, BB_B2 = 1UL << 9, BB_C2 = 1UL << 10, BB_D2 = 1UL << 11, BB_E2 = 1UL << 12, BB_F2 = 1UL << 13, BB_G2 = 1UL << 14, BB_H2 = 1UL << 15, BB_A3 = 1UL << 16, BB_B3 = 1UL << 17, BB_C3 = 1UL << 18, BB_D3 = 1UL << 19, BB_E3 = 1UL << 20, BB_F3 = 1UL << 21, BB_G3 = 1UL << 22, BB_H3 = 1UL << 23, BB_A4 = 1UL << 24, BB_B4 = 1UL << 25, BB_C4 = 1UL << 26, BB_D4 = 1UL << 27, BB_E4 = 1UL << 28, BB_F4 = 1UL << 29, BB_G4 = 1UL << 30, BB_H4 = 1UL << 31, BB_A5 = 1UL << 32, BB_B5 = 1UL << 33, BB_C5 = 1UL << 34, BB_D5 = 1UL << 35, BB_E5 = 1UL << 36, BB_F5 = 1UL << 37, BB_G5 = 1UL << 38, BB_H5 = 1UL << 39, BB_A6 = 1UL << 40, BB_B6 = 1UL << 41, BB_C6 = 1UL << 42, BB_D6 = 1UL << 43, BB_E6 = 1UL << 44, BB_F6 = 1UL << 45, BB_G6 = 1UL << 46, BB_H6 = 1UL << 47, BB_A7 = 1UL << 48, BB_B7 = 1UL << 49, BB_C7 = 1UL << 50, BB_D7 = 1UL << 51, BB_E7 = 1UL << 52, BB_F7 = 1UL << 53, BB_G7 = 1UL << 54, BB_H7 = 1UL << 55, BB_A8 = 1UL << 56, BB_B8 = 1UL << 57, BB_C8 = 1UL << 58, BB_D8 = 1UL << 59, BB_E8 = 1UL << 60, BB_F8 = 1UL << 61, BB_G8 = 1UL << 62, BB_H8 = 1UL << 63;
 
 const Bitboard BB_CORNERS = BB_A1 | BB_H1 | BB_A8 | BB_H8;
 const Bitboard BB_CENTER = BB_D4 | BB_E4 | BB_D5 | BB_E5;
 
-const Bitboard BB_LIGHT_SQUARES = 0x55aa55aa55aa55aa;
-const Bitboard BB_DARK_SQUARES = 0xaa55aa55aa55aa55;
+const Bitboard BB_LIGHT_SQUARES = 0x55aa55aa55aa55aaUL;
+const Bitboard BB_DARK_SQUARES = 0xaa55aa55aa55aa55UL;
 
 const Bitboard BB_FILES[] = {0x0101010101010101UL << 0, 0x0101010101010101UL << 1, 0x0101010101010101UL << 2, 0x0101010101010101UL << 3, 0x0101010101010101UL << 4, 0x0101010101010101UL << 5, 0x0101010101010101UL << 6, 0x0101010101010101UL << 7}, BB_FILE_A = 0x0101010101010101UL << 0, BB_FILE_B = 0x0101010101010101UL << 1, BB_FILE_C = 0x0101010101010101UL << 2, BB_FILE_D = 0x0101010101010101UL << 3, BB_FILE_E = 0x0101010101010101UL << 4, BB_FILE_F = 0x0101010101010101UL << 5, BB_FILE_G = 0x0101010101010101UL << 6, BB_FILE_H = 0x0101010101010101UL << 7;
 
@@ -233,9 +233,9 @@ const Bitboard BB_RANKS[] = {0xffUL << (8 * 0), 0xffUL << (8 * 1), 0xffUL << (8 
 
 const Bitboard BB_BACKRANKS = BB_RANK_1 | BB_RANK_8;
 
-int lsb(Bitboard bb)
+uint8_t lsb(Bitboard bb)
 {
-    return (int)log2(bb & -bb);
+    return (uint8_t)log2(bb & -bb);
 }
 
 vector<Square> scan_forward(Bitboard bb)
@@ -244,16 +244,16 @@ vector<Square> scan_forward(Bitboard bb)
     while (bb)
     {
         Bitboard r = bb & -bb;
-        iter.push_back((int)log2(r));
+        iter.push_back((Square)log2(r));
         bb ^= r;
     }
 
     return iter;
 }
 
-int msb(Bitboard bb)
+uint8_t msb(Bitboard bb)
 {
-    return (int)log2(bb);
+    return (uint8_t)log2(bb);
 }
 
 vector<Square> scan_reversed(Bitboard bb)
@@ -261,7 +261,7 @@ vector<Square> scan_reversed(Bitboard bb)
     vector<Square> iter;
     while (bb)
     {
-        int r = (int)log2(bb);
+        Square r = (Square)log2(bb);
         iter.push_back(r);
         bb ^= BB_SQUARES[r];
     }
@@ -371,11 +371,11 @@ Bitboard shift_down_right(Bitboard b)
     return (b >> 7) & ~BB_FILE_A;
 }
 
-Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int> deltas)
+Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int8_t> deltas)
 {
     Bitboard attacks = BB_EMPTY;
 
-    for (int delta : deltas)
+    for (int8_t delta : deltas)
     {
         Square sq = square;
 
@@ -395,7 +395,7 @@ Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int> deltas)
     return attacks;
 }
 
-Bitboard _step_attacks(Square square, vector<int> deltas)
+Bitboard _step_attacks(Square square, vector<int8_t> deltas)
 {
     return _sliding_attacks(square, BB_ALL, deltas);
 }
@@ -426,7 +426,7 @@ vector<Bitboard> _carry_rippler(Bitboard mask)
     return iter;
 }
 
-tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table(vector<int> deltas)
+tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table(vector<int8_t> deltas)
 {
     vector<Bitboard> mask_table;
     vector<unordered_map<Bitboard, Bitboard>> attack_table;
@@ -453,11 +453,11 @@ const auto [BB_RANK_MASKS, BB_RANK_ATTACKS] = _attack_table({-1, 1});
 vector<vector<Bitboard>> _rays()
 {
     vector<vector<Bitboard>> rays;
-    for (int a = 0; a < 64; ++a)
+    for (uint8_t a = 0; a < 64; ++a)
     {
         Bitboard bb_a = BB_SQUARES[a];
         vector<Bitboard> rays_row;
-        for (int b = 0; b < 64; ++b)
+        for (uint8_t b = 0; b < 64; ++b)
         {
             Bitboard bb_b = BB_SQUARES[b];
             if (BB_DIAG_ATTACKS[a].at(0) & bb_b)
@@ -574,12 +574,12 @@ public:
     // The target square.
 
     PieceType promotion;
-    // The promotion piece type or ``NULL``.
+    // The promotion piece type or ``0``.
 
     PieceType drop;
-    // The drop piece type or ``NULL``.
+    // The drop piece type or ``0``.
 
-    Move(Square from_square, Square to_square, PieceType promotion = NULL, PieceType drop = NULL)
+    Move(Square from_square, Square to_square, PieceType promotion = 0, PieceType drop = 0)
     {
         this->from_square = from_square;
         this->to_square = to_square;
@@ -662,7 +662,7 @@ public:
                 promotion = distance(PIECE_SYMBOLS, it3);
             }
             else
-                promotion = NULL;
+                promotion = 0;
             if (from_square == to_square)
                 throw invalid_argument("invalid uci (use 0000 for null moves): " + uci);
             return new Move(from_square, to_square, promotion = promotion);
@@ -679,15 +679,16 @@ public:
         A null move just passes the turn to the other side (and possibly
         forfeits en passant capturing). Null moves evaluate to ``false`` in
         boolean contexts.
-
-        >>> #include <chess>
-        >>>
-        >>> bool(chess::Move::null())
-        0
         */
         return new Move(0, 0);
     }
 };
+
+class BaseBoard;
+
+typedef BaseBoard BaseBoardT;
+
+class SquareSet;
 
 class BaseBoard
 {
@@ -702,6 +703,14 @@ class BaseBoard
 
 public:
     Bitboard occupied_co[2] = {BB_EMPTY, BB_EMPTY};
+    Bitboard pawns;
+    Bitboard knights;
+    Bitboard bishops;
+    Bitboard rooks;
+    Bitboard queens;
+    Bitboard kings;
+    Bitboard promoted;
+    Bitboard occupied;
 
     BaseBoard(string board_fen = STARTING_BOARD_FEN)
     {
@@ -770,6 +779,52 @@ public:
             return NULL;
     }
 
+    PieceType piece_type_at(Square square)
+    {
+        // Gets the piece type at the given square.
+        Bitboard mask = BB_SQUARES[square];
+
+        if (!(this->occupied & mask))
+            return 0; // Early return
+        else if (this->pawns & mask)
+            return PAWN;
+        else if (this->knights & mask)
+            return KNIGHT;
+        else if (this->bishops & mask)
+            return BISHOP;
+        else if (this->rooks & mask)
+            return ROOK;
+        else if (this->queens & mask)
+            return QUEEN;
+        else
+            return KING;
+    }
+
+    int8_t color_at(Square square)
+    {
+        // Gets the color of the piece at the given square.
+        Bitboard mask = BB_SQUARES[square];
+        if (this->occupied_co[WHITE] & mask)
+            return WHITE;
+        else if (this->occupied_co[BLACK] & mask)
+            return BLACK;
+        else
+            return -1;
+    }
+
+    int8_t king(Color color)
+    {
+        /*
+        Finds the king square of the given side. Returns ``-1`` if there
+        is no king of that color.
+
+        In variants with king promotions, only non-promoted kings are
+        considered.
+        */
+        Bitboard king_mask = this->occupied_co[color] & this->kings & ~this->promoted;
+        return king_mask ? int8_t(msb(king_mask)) : -1;
+    }
+
 private:
     void _reset_board()
     {
@@ -804,7 +859,33 @@ private:
     }
 };
 
-typedef BaseBoard BaseBoardT;
+class SquareSet
+{
+    /*
+    A set of squares.
+
+    Square sets are internally represented by 64-bit integer masks of the
+    included squares. Bitwise operations can be used to compute unions,
+    intersections and shifts.
+
+    Also supports common set operations like
+    :func:`~chess::SquareSet::issubset()`, :func:`~chess::SquareSet::issuperset()`,
+    :func:`~chess::SquareSet::union()`, :func:`~chess::SquareSet::intersection()`,
+    :func:`~chess::SquareSet::difference()`,
+    :func:`~chess::SquareSet::symmetric_difference()` and
+    :func:`~chess::SquareSet::copy()` as well as
+    :func:`~chess::SquareSet::update()`,
+    :func:`~chess::SquareSet::intersection_update()`,
+    :func:`~chess::SquareSet::difference_update()`,
+    :func:`~chess::SquareSet::symmetric_difference_update()` and
+    :func:`~chess::SquareSet::clear()`.
+    */
+
+public:
+    SquareSet(auto squares = BB_EMPTY)
+    {
+    }
+};
 
 int main()
 {
