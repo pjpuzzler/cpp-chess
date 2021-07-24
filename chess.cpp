@@ -32,20 +32,11 @@ public:
 
     Chess()
     {
-        turn = WHITE;
-
-        fill(&board[0][0], &board[0][0] + sizeof(board), NULL);
-        board[0] = {Piece(ROOK, BLACK), Piece(KNIGHT, BLACK), Piece(BISHOP, BLACK), Piece(QUEEN, BLACK), Piece(KING, BLACK), Piece(BISHOP, BLACK), Piece(KNIGHT, BLACK), Piece(ROOK, BLACK)};
-        board[1] = {Piece(PAWN, BLACK), Piece(PAWN, BLACK), Piece(PAWN, BLACK), Piece(PAWN, BLACK), Piece(PAWN, BLACK), Piece(PAWN, BLACK), Piece(PAWN, BLACK), Piece(PAWN, BLACK)};
-        board[6] = {Piece(PAWN, WHITE), Piece(PAWN, WHITE), Piece(PAWN, WHITE), Piece(PAWN, WHITE), Piece(PAWN, WHITE), Piece(PAWN, WHITE), Piece(PAWN, WHITE), Piece(PAWN, WHITE)};
-        board[7] = {Piece(ROOK, WHITE), Piece(KNIGHT, WHITE), Piece(BISHOP, WHITE), Piece(QUEEN, WHITE), Piece(KING, WHITE), Piece(BISHOP, WHITE), Piece(KNIGHT, WHITE), Piece(ROOK, WHITE)};
     }
 
     bool isCheck()
     {
         // Tests if the current side to move is in check.
-
-        return isAttackedBy(Color color, Square square);
     }
 
     bool isAttackedBy(Color color, Square square)
