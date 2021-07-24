@@ -8,6 +8,7 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <stdexcept>
 #include <algorithm>
 #include <cmath>
+#include <vector>
 #include <iostream>
 
 using namespace std;
@@ -230,6 +231,195 @@ const Bitboard BB_FILES[] = {0x0101010101010101 << 0, 0x0101010101010101 << 1, 0
 const Bitboard BB_RANKS[] = {0xffL << (8 * 0), 0xffL << (8 * 1), 0xffL << (8 * 2), 0xffL << (8 * 3), 0xffL << (8 * 4), 0xffL << (8 * 5), 0xffL << (8 * 6), 0xffL << (8 * 7)}, BB_RANK_1 = 0xffL << (8 * 0), BB_RANK_2 = 0xffL << (8 * 1), BB_RANK_3 = 0xffL << (8 * 2), BB_RANK_4 = 0xffL << (8 * 3), BB_RANK_5 = 0xffL << (8 * 4), BB_RANK_6 = 0xffL << (8 * 5), BB_RANK_7 = 0xffL << (8 * 6), BB_RANK_8 = 0xffL << (8 * 7);
 
 const Bitboard BB_BACKRANKS = BB_RANK_1 | BB_RANK_8;
+
+int lsb(Bitboard bb)
+{
+    return log2(bb & -bb);
+}
+
+function<Square(Bitboard)> scan_forward = [](bb)
+{
+    if (!bb)
+        return [=]() mutable
+        {
+            return -1;
+        };
+
+    Bitboard r = bb & -bb;
+    bb ^= r;
+
+    return [=]() mutable
+    {
+        return log2(r);
+    };
+}
+
+int
+msb(Bitboard bb)
+{
+    return log2(bb);
+}
+
+function<Square(Bitboard)> scan_reversed = [](bb)
+{
+    if (!bb)
+        return [=]() mutable
+        {
+            return -1;
+        };
+
+    Bitboard r = log2(bb);
+    bb ^= BB_SQUARES[r];
+
+    return [=]() mutable
+    {
+        return r;
+    };
+}
+
+// popcount: Callable[[Bitboard], int] = getattr(int, "bit_count", lambda bb: bin(bb).count("1"))
+
+Bitboard
+flip_vertical(Bitboard bb)
+{
+    // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#FlipVertically
+    bb = ((bb >> 8) & 0x00ff00ff00ff00ff) | ((bb & 0x00ff00ff00ff00ff) << 8);
+    bb = ((bb >> 16) & 0x0000ffff0000ffff) | ((bb & 0x0000ffff0000ffff) << 16);
+    bb = (bb >> 32) | ((bb & 0x00000000ffffffff) << 32);
+    return bb;
+}
+
+Bitboard flip_horizontal(Bitboard bb)
+{
+    // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#MirrorHorizontally
+    bb = ((bb >> 1) & 0x5555555555555555) | ((bb & 0x5555555555555555) << 1);
+    bb = ((bb >> 2) & 0x3333333333333333) | ((bb & 0x3333333333333333) << 2);
+    bb = ((bb >> 4) & 0x0f0f0f0f0f0f0f0f) | ((bb & 0x0f0f0f0f0f0f0f0f) << 4);
+    return bb;
+}
+
+Bitboard flip_diagonal(Bitboard bb)
+{
+    // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#FlipabouttheDiagonal
+    Bitboard t = (bb ^ (bb << 28)) & 0x0f0f0f0f00000000;
+    bb = bb ^ (t ^ (t >> 28));
+    t = (bb ^ (bb << 14)) & 0x3333000033330000;
+    bb = bb ^ (t ^ (t >> 14));
+    t = (bb ^ (bb << 7)) & 0x5500550055005500;
+    bb = bb ^ (t ^ (t >> 7));
+    return bb;
+}
+
+Bitboard flip_anti_diagonal(Bitboard bb)
+{
+    // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#FlipabouttheAntidiagonal
+    Bitboard t = bb ^ (bb << 36);
+    bb = bb ^ ((t ^ (bb >> 36)) & 0xf0f0f0f00f0f0f0f);
+    t = (bb ^ (bb << 18)) & 0xcccc0000cccc0000;
+    bb = bb ^ (t ^ (t >> 18));
+    t = (bb ^ (bb << 9)) & 0xaa00aa00aa00aa00;
+    bb = bb ^ (t ^ (t >> 9));
+    return bb;
+}
+
+Bitboard shift_down(Bitboard b)
+{
+    return b >> 8;
+}
+
+Bitboard shift_2_down(Bitboard b)
+{
+    return b >> 16;
+}
+
+Bitboard shift_up(Bitboard b)
+{
+    return (b << 8) & BB_ALL;
+}
+
+Bitboard shift_2_up(Bitboard b)
+{
+    return (b << 16) & BB_ALL;
+}
+
+Bitboard shift_right(Bitboard b)
+{
+    return (b << 1) & ~BB_FILE_A & BB_ALL;
+}
+
+Bitboard shift_2_right(Bitboard b)
+{
+    return (b << 2) & ~BB_FILE_A & ~BB_FILE_B & BB_ALL;
+}
+
+Bitboard shift_left(Bitboard b)
+{
+    return (b >> 1) & ~BB_FILE_H;
+}
+
+Bitboard shift_2_left(Bitboard b)
+{
+    return (b >> 2) & ~BB_FILE_G & ~BB_FILE_H;
+}
+
+Bitboard shift_up_left(Bitboard b)
+{
+    return (b << 7) & ~BB_FILE_H & BB_ALL;
+}
+
+Bitboard shift_up_right(Bitboard b)
+{
+    return (b << 9) & ~BB_FILE_A & BB_ALL;
+}
+
+Bitboard shift_down_left(Bitboard b)
+{
+    return (b >> 9) & ~BB_FILE_H;
+}
+
+Bitboard shift_down_right(Bitboard b)
+{
+    return (b >> 7) & ~BB_FILE_A;
+}
+
+Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int> deltas)
+{
+    Bitboard attacks = BB_EMPTY;
+
+    for (int delta : deltas)
+    {
+        Square sq = square;
+
+        while (true)
+        {
+            sq += delta;
+            if (!(0 <= sq && sq < 64) || square_distance(sq, sq - delta) > 2)
+                break;
+
+            attacks |= BB_SQUARES[sq];
+
+            if (occupied & BB_SQUARES[sq])
+                break;
+        }
+    }
+
+    return attacks;
+}
+
+Bitboard _step_attacks(Square square, vector<int> deltas)
+{
+    return _sliding_attacks(square, BB_ALL, deltas);
+}
+
+// const Bitboard BB_KNIGHT_ATTACKS[] = [_step_attacks(sq, [17, 15, 10, 6, -17, -15, -10, -6]) for sq in SQUARES]
+// const Bitboard BB_KING_ATTACKS[] = [_step_attacks(sq, [9, 8, 7, 1, -9, -8, -7, -1]) for sq in SQUARES]
+// const Bitboard BB_PAWN_ATTACKS[][] = [[_step_attacks(sq, deltas) for sq in SQUARES] for deltas in [[-7, -9], [7, 9]]]
+
+Bitboard _edges(Square square)
+{
+    return (((BB_RANK_1 | BB_RANK_8) & ~BB_RANKS[square_rank(square)]) |
+            ((BB_FILE_A | BB_FILE_H) & ~BB_FILES[square_file(square)]));
+}
 
 int main()
 {
