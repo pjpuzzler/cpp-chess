@@ -450,6 +450,43 @@ const auto [BB_DIAG_MASKS, BB_DIAG_ATTACKS] = _attack_table({-9, -7, 7, 9});
 const auto [BB_FILE_MASKS, BB_FILE_ATTACKS] = _attack_table({-8, 8});
 const auto [BB_RANK_MASKS, BB_RANK_ATTACKS] = _attack_table({-1, 1});
 
+vector<vector<Bitboard>> _rays()
+{
+    vector<vector<Bitboard>> rays;
+    for (int a = 0; a < 64; ++a)
+    {
+        Bitboard bb_a = BB_SQUARES[a];
+        vector<Bitboard> rays_row;
+        for (int b = 0; b < 64; ++b)
+        {
+            Bitboard bb_b = BB_SQUARES[b];
+            if (BB_DIAG_ATTACKS[a].at(0) & bb_b)
+                rays_row.push_back((BB_DIAG_ATTACKS[a].at(0) & BB_DIAG_ATTACKS[b].at(0)) | bb_a | bb_b);
+            else if (BB_RANK_ATTACKS[a].at(0) & bb_b)
+                rays_row.push_back(BB_RANK_ATTACKS[a].at(0) | bb_a);
+            else if (BB_FILE_ATTACKS[a].at(0) & bb_b)
+                rays_row.push_back(BB_FILE_ATTACKS[a].at(0) | bb_a);
+            else
+                rays_row.push_back(BB_EMPTY);
+        }
+        rays.push_back(rays_row);
+    }
+    return rays;
+}
+
+const vector<vector<Bitboard>> BB_RAYS = _rays();
+
+Bitboard ray(Square a, Square b)
+{
+    return BB_RAYS[a][b];
+}
+
+Bitboard between(Square a, Square b)
+{
+    Bitboard bb = BB_RAYS[a][b] & ((BB_ALL << a) ^ (BB_ALL << b));
+    return bb & (bb - 1);
+}
+
 int main()
 {
 }
