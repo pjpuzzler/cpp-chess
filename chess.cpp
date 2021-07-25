@@ -12,6 +12,7 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <bit>
 #include <tuple>
 #include <regex>
+#include <stack>
 
 #include <iostream>
 
@@ -729,15 +730,7 @@ class BaseBoard
     */
 
 public:
-    Bitboard occupied_co[2] = {BB_EMPTY, BB_EMPTY};
-    Bitboard pawns;
-    Bitboard knights;
-    Bitboard bishops;
-    Bitboard rooks;
-    Bitboard queens;
-    Bitboard kings;
-    Bitboard promoted;
-    Bitboard occupied;
+    Bitboard occupied_co[2] = {BB_EMPTY, BB_EMPTY}, pawns, knights, bishops, rooks, queens, kings, promoted, occupied;
 
     BaseBoard(const string &board_fen = STARTING_BOARD_FEN)
     {
@@ -1100,7 +1093,7 @@ public:
         if (((BB_RANK_1 & this->bishops) << 56 != (BB_RANK_8 & this->bishops)) || ((BB_RANK_1 & this->rooks) << 56 != (BB_RANK_8 & this->rooks)) || ((BB_RANK_1 & this->knights) << 56 != (BB_RANK_8 & this->knights)) || ((BB_RANK_1 & this->queens) << 56 != (BB_RANK_8 & this->queens)) || ((BB_RANK_1 & this->kings) << 56 != (BB_RANK_8 & this->kings)))
             return -1;
 
-        // Algorithm from ChessX, src/database/bitboard.cpp, r2254.
+        // Algorithm from ChessX
         Bitboard x = this->bishops & (2 + 8 + 32 + 128);
         if (!x)
             return -1;
@@ -1617,6 +1610,186 @@ private:
         this->occupied_co[BLACK] = BB_RANK_7 | BB_RANK_8;
         this->occupied = BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8;
         this->promoted = BB_EMPTY;
+    }
+};
+
+class Board;
+
+typedef Board BoardT;
+
+class Board : public BaseBoard
+{
+    /*
+    A :class:`~chess::BaseBoard`, additional information representing
+    a chess position, and a :data:`move stack <chess::Board::move_stack>`.
+
+    Provides :data:`move generation <chess::Board::legal_moves>`, validation,
+    :func:`parsing <chess::Board::parse_san()>`, attack generation,
+    :func:`game end detection <chess::Board::is_game_over()>`,
+    and the capability to :func:`make <chess::Board::push()>` and
+    :func:`unmake <chess::Board::pop()>` moves.
+
+    The board is initialized to the standard chess starting position,
+    unless otherwise specified in the optional *fen* argument.
+    If *fen* is ``""``, an empty board is created.
+
+    Optionally supports *chess960*. In Chess960, castling moves are encoded
+    by a king move to the corresponding rook square.
+    Use :func:`chess::Board::from_chess960_pos()` to create a board with one
+    of the Chess960 starting positions.
+
+    It's safe to set :data:`~Board::turn`, :data:`~Board::castling_rights`,
+    :data:`~Board::ep_square`, :data:`~Board::halfmove_clock` and
+    :data:`~Board::fullmove_number` directly.
+
+    .. warning::
+        It is possible to set up and work with invalid positions. In this
+        case, :class:`~chess::Board` implements a kind of "pseudo-chess"
+        (useful to gracefully handle errors or to implement chess variants).
+        Use :func:`~chess::Board::is_valid()` to detect invalid positions.
+    */
+
+public:
+    const static string aliases[6] = {"Standard", "Chess", "Classical", "Normal", "Illegal", "From Position"};
+    string uci_variant = "chess";
+    string xboard_variant = "normal";
+    string starting_fen = STARTING_FEN;
+
+    string tbw_suffix = ".rtbw";
+    string tbz_suffix = ".rtbz";
+    unsigned char tbw_magic[4] = {0x71, 0xe8, 0x23, 0x5d};
+    unsigned char tbz_magic[4] = {0xd7, 0x66, 0x0c, 0xa5};
+    string pawnless_tbw_suffix = "";
+    string pawnless_tbz_suffix = "";
+    unsigned char pawnless_tbw_magic;
+    unsigned char pawnless_tbz_magic;
+    bool connected_kings = false;
+    bool one_king = true;
+    bool captures_compulsory = false;
+
+    Color turn;
+    // The side to move (``chess::WHITE`` or ``chess::BLACK``).
+
+    Bitboard castling_rights;
+    /*
+    Bitmask of the rooks with castling rights.
+
+    Use :func:`~chess::Board::set_castling_fen()` to set multiple castling
+    rights. Also see :func:`~chess::Board::has_castling_rights()`,
+    :func:`~chess::Board::has_kingside_castling_rights()`,
+    :func:`~chess::Board::has_queenside_castling_rights()`,
+    :func:`~chess::Board::has_chess960_castling_rights()`,
+    :func:`~chess::Board::clean_castling_rights()`.
+    */
+
+    int8_t ep_square;
+    /*
+    The potential en passant square on the third or sixth rank or ``-1``.
+
+    Use :func:`~chess::Board::has_legal_en_passant()` to test if en passant
+    capturing would actually be possible on the next move.
+    */
+
+    uint16_t fullmove_number;
+    /*
+    Counts move pairs. Starts at `1` and is incremented after every move
+    of the black side.
+    */
+
+    uint8_t halfmove_clock;
+    // The number of half-moves since the last capture or pawn move.
+
+    Bitboard promoted;
+    // A bitmask of pieces that have been promoted.
+
+    bool chess960;
+    /*
+    Whether the board is in Chess960 mode. In Chess960 castling moves are
+    represented as king moves to the corresponding rook square.
+    */
+
+    stack<Move> move_stack;
+    /*
+    The move stack. Use :func:`Board::push() <chess::Board::push()>`,
+    :func:`Board::pop() <chess::Board::pop()>`,
+    :func:`Board::peek() <chess::Board::peek()>` and
+    :func:`Board::clear_stack() <chess::Board::clear_stack()>` for
+    manipulation.
+    */
+
+    Board(string fen = STARTING_FEN, bool chess960 = false, ...)
+    {
+        BaseBoard.__init__(self, None);
+
+        this->chess960 = chess960;
+
+        this->ep_square = -1;
+
+        if (fen.empty())
+            this->clear();
+        else if (fen == Board::starting_fen)
+            this->reset();
+        else
+            this->set_fen(fen);
+    }
+
+private:
+    stack<_BoardState> _stack;
+};
+
+class _BoardState
+{
+
+public:
+    Bitboard pawns, knights, bishops, rooks, queens, kings, occupied_w, occupied_b, occupied, promoted;
+    Color turn;
+    Bitboard castling_rights;
+    int8_t ep_square;
+    uint8_t halfmove_clock;
+    uint16_t fullmove_number;
+
+    _BoardState(BoardT *board)
+    {
+        this->pawns = board->pawns;
+        this->knights = board->knights;
+        this->bishops = board->bishops;
+        this->rooks = board->rooks;
+        this->queens = board->queens;
+        this->kings = board->kings;
+
+        this->occupied_w = board->occupied_co[WHITE];
+        this->occupied_b = board->occupied_co[BLACK];
+        this->occupied = board->occupied;
+
+        this->promoted = board->promoted;
+
+        this->turn = board->turn;
+        this->castling_rights = board->castling_rights;
+        this->ep_square = board->ep_square;
+        this->halfmove_clock = board->halfmove_clock;
+        this->fullmove_number = board->fullmove_number;
+    }
+
+    void restore(BoardT *board) const
+    {
+        board->pawns = this->pawns;
+        board->knights = this->knights;
+        board->bishops = this->bishops;
+        board->rooks = this->rooks;
+        board->queens = this->queens;
+        board->kings = this->kings;
+
+        board->occupied_co[WHITE] = this->occupied_w;
+        board->occupied_co[BLACK] = this->occupied_b;
+        board->occupied = this->occupied;
+
+        board->promoted = this->promoted;
+
+        board->turn = this->turn;
+        board->castling_rights = this->castling_rights;
+        board->ep_square = this->ep_square;
+        board->halfmove_clock = this->halfmove_clock;
+        board->fullmove_number = this->fullmove_number;
     }
 };
 
