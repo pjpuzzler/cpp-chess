@@ -9,10 +9,11 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <algorithm>
 #include <cmath>
 #include <vector>
-#include <iostream>
 #include <bit>
 #include <tuple>
 #include <regex>
+
+#include <iostream>
 
 using namespace std;
 
@@ -551,7 +552,7 @@ public:
 template <>
 struct hash<Piece>
 {
-    std::size_t operator()(const Piece &piece) const
+    size_t operator()(const Piece &piece) const
     {
         return piece.piece_type + (piece.color ? -1 : 5);
     }
@@ -1066,6 +1067,274 @@ public:
         this->_set_piece_map(pieces);
     }
 
+    void set_chess960_pos(uint16_t scharnagl)
+    {
+        /*
+        Sets up a Chess960 starting position given its index between 0 and 959.
+        Also see :func:`~chess::BaseBoard::from_chess960_pos()`.
+        */
+        this->_set_chess960_pos(scharnagl);
+    }
+
+    int16_t chess960_pos() const
+    {
+        /*
+        Gets the Chess960 starting position index between 0 and 959,
+        or ``-1``.
+        */
+        if (this->occupied_co[WHITE] != (BB_RANK_1 | BB_RANK_2))
+            return -1;
+        if (this->occupied_co[BLACK] != (BB_RANK_7 | BB_RANK_8))
+            return -1;
+        if (this->pawns != (BB_RANK_2 | BB_RANK_7))
+            return -1;
+        if (this->promoted)
+            return -1;
+
+        // Piece counts.
+        vector<Bitboard> brnqk = {this->bishops, this->rooks, this->knights, this->queens, this->kings};
+        if (popcount(this->bishops) != 4 || popcount(this->rooks) != 4 || popcount(this->knights) != 4 || popcount(this->queens) != 2 || popcount(this->kings) != 2)
+            return -1;
+
+        // Symmetry.
+        if (((BB_RANK_1 & this->bishops) << 56 != (BB_RANK_8 & this->bishops)) || ((BB_RANK_1 & this->rooks) << 56 != (BB_RANK_8 & this->rooks)) || ((BB_RANK_1 & this->knights) << 56 != (BB_RANK_8 & this->knights)) || ((BB_RANK_1 & this->queens) << 56 != (BB_RANK_8 & this->queens)) || ((BB_RANK_1 & this->kings) << 56 != (BB_RANK_8 & this->kings)))
+            return -1;
+
+        // Algorithm from ChessX, src/database/bitboard.cpp, r2254.
+        Bitboard x = this->bishops & (2 + 8 + 32 + 128);
+        if (!x)
+            return -1;
+        int8_t bs1 = (lsb(x) - 1) / 2;
+        int8_t cc_pos = bs1;
+        x = this->bishops & (1 + 4 + 16 + 64);
+        if (!x)
+            return -1;
+        uint8_t bs2 = lsb(x) * 2;
+        cc_pos += bs2;
+
+        uint8_t q = 0;
+        bool qf = false;
+        uint8_t n0 = 0;
+        uint8_t n1 = 0;
+        bool n0f = false;
+        bool n1f = false;
+        uint8_t rf = 0;
+        vector<uint8_t> n0s = {0, 4, 7, 9};
+        for (Square square = A1; square <= H1; ++square)
+        {
+            Bitboard bb = BB_SQUARES[square];
+            if (bb & this->queens)
+                qf = true;
+            else if (bb & this->rooks || bb & this->kings)
+            {
+                if (bb & this->kings)
+                {
+                    if (rf != 1)
+                        return -1;
+                }
+                else
+                    ++rf;
+
+                if (!qf)
+                    ++q;
+
+                if (!n0f)
+                    ++n0;
+                else if (!n1f)
+                    ++n1;
+            }
+            else if (bb & this->knights)
+            {
+                if (!qf)
+                    ++q;
+
+                if (!n0f)
+                    n0f = true;
+                else if (!n1f)
+                    n1f = true;
+            }
+        }
+
+        if (n0 < 4 && n1f && qf)
+        {
+            cc_pos += q * 16;
+            uint8_t krn = n0s[n0] + n1;
+            cc_pos += krn * 96;
+            return cc_pos;
+        }
+        else
+            return -1;
+    }
+
+    string unicode(bool invert_color = false, bool borders = false, string empty_square = "⭘", ...) const
+    {
+        /*
+        Returns a string representation of the board with Unicode pieces.
+        Useful for pretty-printing to a terminal.
+
+        :param invert_color: Invert color of the Unicode pieces.
+        :param borders: Show borders and a coordinate margin.
+        */
+        vector<char> builder;
+        for (int rank_index = 7; rank_index >= 0; --rank_index)
+        {
+            if (borders)
+                builder.insert(builder.end(), 2, ' ');
+            builder.insert(builder.end(), 17, '-');
+            builder.push_back('\n');
+
+            builder.push_back(RANK_NAMES[rank_index]);
+            builder.push_back(' ');
+
+            for (int file_index = 0; file_index < 8; ++file_index)
+            {
+                Square square_index = square(file_index, rank_index);
+
+                if (borders)
+                    builder.push_back('|');
+                else if (file_index > 0)
+                    builder.push_back(' ');
+
+                Piece *piece = this->piece_at(square_index);
+
+                if (piece)
+                {
+                    string unicode_symbol = piece->unicode_symbol(invert_color = invert_color);
+                    std::copy(unicode_symbol.begin(), unicode_symbol.end(), back_inserter(builder));
+                }
+                else
+                    std::copy(empty_square.begin(), empty_square.end(), back_inserter(builder));
+            }
+
+            if (borders)
+                builder.push_back('|');
+
+            if (borders || rank_index > 0)
+                builder.push_back('\n');
+        }
+
+        if (borders)
+        {
+            builder.insert(builder.end(), 2, ' ');
+            builder.insert(builder.end(), 17, '-');
+            builder.push_back('\n');
+            builder.insert(builder.end(), 3, ' ');
+            string letters = "   a b c d e f g h";
+            std::copy(letters.begin(), letters.end(), back_inserter(builder));
+        }
+
+        return string(builder.begin(), builder.end());
+    }
+
+    bool operator==(const BaseBoard &board) const
+    {
+        return (
+            this->occupied == board.occupied &&
+            this->occupied_co[WHITE] == board.occupied_co[WHITE] &&
+            this->pawns == board.pawns &&
+            this->knights == board.knights &&
+            this->bishops == board.bishops &&
+            this->rooks == board.rooks &&
+            this->queens == board.queens &&
+            this->kings == board.kings);
+    }
+
+    void apply_transform(function<Bitboard(Bitboard)> f)
+    {
+        this->pawns = f(this->pawns);
+        this->knights = f(this->knights);
+        this->bishops = f(this->bishops);
+        this->rooks = f(this->rooks);
+        this->queens = f(this->queens);
+        this->kings = f(this->kings);
+
+        this->occupied_co[WHITE] = f(this->occupied_co[WHITE]);
+        this->occupied_co[BLACK] = f(this->occupied_co[BLACK]);
+        this->occupied = f(this->occupied);
+        this->promoted = f(this->promoted);
+    }
+
+    BaseBoardT *transform(function<Bitboard(Bitboard)> f) const
+    {
+        /*
+        Returns a transformed copy of the board by applying a bitboard
+        transformation function.
+
+        Available transformations include :func:`chess::flip_vertical()`,
+        :func:`chess::flip_horizontal()`, :func:`chess::flip_diagonal()`,
+        :func:`chess::flip_anti_diagonal()`, :func:`chess::shift_down()`,
+        :func:`chess::shift_up()`, :func:`chess::shift_left()`, and
+        :func:`chess::shift_right()`.
+
+        Alternatively, :func:`~chess::BaseBoard::apply_transform()` can be used
+        to apply the transformation on the board.
+        */
+        BaseBoardT *board = this->copy();
+        board->apply_transform(f);
+        return board;
+    }
+
+    void apply_mirror()
+    {
+        this->apply_transform(flip_vertical);
+        swap(this->occupied_co[WHITE], this->occupied_co[BLACK]);
+    }
+
+    BaseBoardT *mirror() const
+    {
+        /*
+        Returns a mirrored copy of the board.
+
+        The board is mirrored vertically and piece colors are swapped, so that
+        the position is equivalent modulo color.
+
+        Alternatively, :func:`~chess::BaseBoard::apply_mirror()` can be used
+        to mirror the board.
+        */
+        BaseBoardT *board = this->copy();
+        board->apply_mirror();
+        return board;
+    }
+
+    BaseBoardT *copy() const
+    {
+        // Creates a copy of the board.
+        BaseBoardT *board = new BaseBoard("");
+
+        board->pawns = this->pawns;
+        board->knights = this->knights;
+        board->bishops = this->bishops;
+        board->rooks = this->rooks;
+        board->queens = this->queens;
+        board->kings = this->kings;
+
+        board->occupied_co[WHITE] = this->occupied_co[WHITE];
+        board->occupied_co[BLACK] = this->occupied_co[BLACK];
+        board->occupied = this->occupied;
+        board->promoted = this->promoted;
+
+        return board;
+    }
+
+    static BaseBoardT *empty()
+    {
+        /*
+        Creates a new empty board. Also see
+        :func:`~chess::BaseBoard::clear_board()`.
+        */
+        return new BaseBoardT("");
+    }
+
+    static BaseBoardT *from_chess960_pos(uint16_t scharnagl)
+    {
+        /*
+        Creates a new board, initialized with a Chess960 starting position.
+        */
+        BaseBoardT *board = BaseBoard::empty();
+        board->set_chess960_pos(scharnagl);
+        return board;
+    }
+
 private:
     void _reset_board()
     {
@@ -1348,7 +1617,6 @@ private:
         this->occupied_co[BLACK] = BB_RANK_7 | BB_RANK_8;
         this->occupied = BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8;
         this->promoted = BB_EMPTY;
-        ;
     }
 };
 
