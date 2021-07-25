@@ -1011,7 +1011,7 @@ public:
             {
                 if (empty)
                 {
-                    builder.push_back('0' + empty);
+                    builder.push_back(empty + '0');
                     empty = 0;
                 }
                 builder.push_back(piece->symbol());
@@ -1023,7 +1023,7 @@ public:
             {
                 if (empty)
                 {
-                    builder.push_back('0' + empty);
+                    builder.push_back(empty + '0');
                     empty = 0;
                 }
 
@@ -1033,6 +1033,37 @@ public:
         }
 
         return string(builder.begin(), builder.end());
+    }
+
+    void set_board_fen(const string &fen)
+    {
+        /*
+        Parses *fen* and sets up the board, where *fen* is the board part of
+        a FEN.
+
+        :raises: :exc:`invalid_argument` if syntactically invalid.
+        */
+        this->_set_board_fen(fen);
+    }
+
+    unordered_map<Square, Piece *> piece_map(Bitboard mask = BB_ALL, ...) const
+    {
+        /*
+        Gets a map of :class:`pieces <chess::Piece>` by square index.
+        */
+        unordered_map<Square, Piece *> result;
+        for (Square square : scan_reversed(this->occupied & mask))
+            result[square] = this->piece_at(square);
+        return result;
+    }
+
+    void set_piece_map(const unordered_map<Square, Piece *> &pieces)
+    {
+        /*
+        Sets up the board from a map of :class:`pieces <chess::Piece>`
+        by square index.
+        */
+        this->_set_piece_map(pieces);
     }
 
 private:
@@ -1082,7 +1113,7 @@ private:
                               (BB_RANK_ATTACKS[square].at(rank_pieces) & queens_and_rooks) |
                               (BB_FILE_ATTACKS[square].at(file_pieces) & queens_and_rooks) |
                               (BB_DIAG_ATTACKS[square].at(diag_pieces) & queens_and_bishops) |
-                              (BB_PAWN_ATTACKS[not color][square] & this->pawns));
+                              (BB_PAWN_ATTACKS[!color][square] & this->pawns));
 
         return attackers & this->occupied_co[color];
     }
@@ -1183,7 +1214,7 @@ private:
                 {
                     if (previous_was_digit)
                         throw invalid_argument("two subsequent digits in position part of fen: " + fen);
-                    field_sum += int(c - '0');
+                    field_sum += uint8_t(c - '0');
                     previous_was_digit = true;
                     previous_was_piece = false;
                 }
@@ -1216,7 +1247,7 @@ private:
         for (char c : fen)
         {
             if (c == '1' || c == '2' || c == '3' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8')
-                square_index += int(c);
+                square_index += uint8_t(c);
             else if (find(begin(PIECE_SYMBOLS), end(PIECE_SYMBOLS), tolower(c)) != end(PIECE_SYMBOLS))
             {
                 Piece *piece = Piece::from_symbol(c);
@@ -1226,6 +1257,98 @@ private:
             else if (c == '~')
                 this->promoted |= BB_SQUARES[SQUARES_180[square_index - 1]];
         }
+    }
+
+    void _set_piece_map(const unordered_map<Square, Piece *> &pieces)
+    {
+        this->_clear_board();
+        for (const auto &[square, piece] : pieces)
+            this->_set_piece_at(square, piece->piece_type, piece->color);
+    }
+
+    void _set_chess960_pos(uint16_t scharnagl)
+    {
+        if (!(0 <= scharnagl && scharnagl <= 959))
+            throw invalid_argument("chess960 position index not 0 <= " + to_string(scharnagl) + " <= 959");
+
+        // See http://www.russellcottrell.com/Chess/Chess960.htm for
+        // a description of the algorithm.
+        uint8_t n = scharnagl / 4, bw = scharnagl % 4;
+        uint8_t bb = n % 4;
+        n /= 4;
+        uint8_t q = n % 6;
+        n /= 6;
+
+        uint8_t n1, n2;
+        for (n1 = 0; n1 < 4; ++n1)
+        {
+            n2 = n + (3 - n1) * (4 - n1) / 2 - 5;
+            if (n1 < n2 && 1 <= n2 && n2 <= 4)
+                break;
+        }
+
+        // Bishops.
+        uint8_t bw_file = bw * 2 + 1;
+        uint8_t bb_file = bb * 2;
+        this->bishops = (BB_FILES[bw_file] | BB_FILES[bb_file]) & BB_BACKRANKS;
+
+        // Queens.
+        uint8_t q_file = q;
+        q_file += uint8_t(min(bw_file, bb_file) <= q_file);
+        q_file += uint8_t(max(bw_file, bb_file) <= q_file);
+        this->queens = BB_FILES[q_file] & BB_BACKRANKS;
+
+        vector<uint8_t> used = {bw_file, bb_file, q_file};
+
+        // Knights.
+        this->knights = BB_EMPTY;
+        for (uint8_t i = 0; i < 8; ++i)
+        {
+            if (find(used.begin(), used.end(), i) == used.end())
+                if (n1 == 0 || n2 == 0)
+                {
+                    this->knights |= BB_FILES[i] & BB_BACKRANKS;
+                    used.push_back(i);
+                }
+            --n1;
+            --n2;
+        }
+
+        // RKR.
+        for (uint8_t i = 0; i < 8; ++i)
+        {
+            if (find(used.begin(), used.end(), i) == used.end())
+            {
+                this->rooks = BB_FILES[i] & BB_BACKRANKS;
+                used.push_back(i);
+                break;
+            }
+        }
+        for (uint8_t i = 1; i < 8; ++i)
+        {
+            if (find(used.begin(), used.end(), i) == used.end())
+            {
+                this->kings = BB_FILES[i] & BB_BACKRANKS;
+                used.push_back(i);
+                break;
+            }
+        }
+        for (uint8_t i = 2; i < 8; ++i)
+        {
+            if (find(used.begin(), used.end(), i) == used.end())
+            {
+                this->rooks |= BB_FILES[i] & BB_BACKRANKS;
+                break;
+            }
+        }
+
+        // Finalize.
+        this->pawns = BB_RANK_2 | BB_RANK_7;
+        this->occupied_co[WHITE] = BB_RANK_1 | BB_RANK_2;
+        this->occupied_co[BLACK] = BB_RANK_7 | BB_RANK_8;
+        this->occupied = BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8;
+        this->promoted = BB_EMPTY;
+        ;
     }
 };
 
