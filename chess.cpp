@@ -161,7 +161,7 @@ const Square SQUARES[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
 
 const string SQUARE_NAMES[] = {"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"};
 
-Square parse_square(string name)
+Square parse_square(const string &name)
 {
     /*
     Gets the square index for the given square *name*
@@ -371,7 +371,7 @@ Bitboard shift_down_right(Bitboard b)
     return (b >> 7) & ~BB_FILE_A;
 }
 
-Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int8_t> deltas)
+Bitboard _sliding_attacks(Square square, Bitboard occupied, const vector<int8_t> &deltas)
 {
     Bitboard attacks = BB_EMPTY;
 
@@ -395,7 +395,7 @@ Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int8_t> delta
     return attacks;
 }
 
-Bitboard _step_attacks(Square square, vector<int8_t> deltas)
+Bitboard _step_attacks(Square square, const vector<int8_t> &deltas)
 {
     return _sliding_attacks(square, BB_ALL, deltas);
 }
@@ -426,7 +426,7 @@ vector<Bitboard> _carry_rippler(Bitboard mask)
     return iter;
 }
 
-tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table(vector<int8_t> deltas)
+tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table(const vector<int8_t> &deltas)
 {
     vector<Bitboard> mask_table;
     vector<unordered_map<Bitboard, Bitboard>> attack_table;
@@ -446,9 +446,9 @@ tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table
     return {mask_table, attack_table};
 }
 
-const auto [BB_DIAG_MASKS, BB_DIAG_ATTACKS] = _attack_table({-9, -7, 7, 9});
-const auto [BB_FILE_MASKS, BB_FILE_ATTACKS] = _attack_table({-8, 8});
-const auto [BB_RANK_MASKS, BB_RANK_ATTACKS] = _attack_table({-1, 1});
+const auto &[BB_DIAG_MASKS, BB_DIAG_ATTACKS] = _attack_table({-9, -7, 7, 9});
+const auto &[BB_FILE_MASKS, BB_FILE_ATTACKS] = _attack_table({-8, 8});
+const auto &[BB_RANK_MASKS, BB_RANK_ATTACKS] = _attack_table({-1, 1});
 
 vector<vector<Bitboard>> _rays()
 {
@@ -622,7 +622,7 @@ public:
         return this->uci();
     }
 
-    static Move *from_uci(string uci)
+    static Move *from_uci(const string &uci)
     {
         /*
         Parses a UCI string.
@@ -688,7 +688,33 @@ class BaseBoard;
 
 typedef BaseBoard BaseBoardT;
 
-class SquareSet;
+class SquareSet
+{
+    /*
+    A set of squares.
+
+    Square sets are internally represented by 64-bit integer masks of the
+    included squares. Bitwise operations can be used to compute unions,
+    intersections and shifts.
+
+    Also supports common set operations like
+    :func:`~chess::SquareSet::issubset()`, :func:`~chess::SquareSet::issuperset()`,
+    :func:`~chess::SquareSet::union()`, :func:`~chess::SquareSet::intersection()`,
+    :func:`~chess::SquareSet::difference()`,
+    :func:`~chess::SquareSet::symmetric_difference()` and
+    :func:`~chess::SquareSet::copy()` as well as
+    :func:`~chess::SquareSet::update()`,
+    :func:`~chess::SquareSet::intersection_update()`,
+    :func:`~chess::SquareSet::difference_update()`,
+    :func:`~chess::SquareSet::symmetric_difference_update()` and
+    :func:`~chess::SquareSet::clear()`.
+    */
+
+public:
+    SquareSet(auto squares = BB_EMPTY)
+    {
+    }
+};
 
 class BaseBoard
 {
@@ -712,14 +738,14 @@ public:
     Bitboard promoted;
     Bitboard occupied;
 
-    BaseBoard(string board_fen = STARTING_BOARD_FEN)
+    BaseBoard(const string &board_fen = STARTING_BOARD_FEN)
     {
-        // if (board_fen.empty())
-        //     this->_clear_board();
-        // else if (board_fen == STARTING_BOARD_FEN)
-        //     this->_reset_board();
-        // else
-        //     this->_set_board_fen(board_fen);
+        if (board_fen.empty())
+            this->_clear_board();
+        else if (board_fen == STARTING_BOARD_FEN)
+            this->_reset_board();
+        else
+            this->_set_board_fen(board_fen);
     }
 
     void reset_board()
@@ -734,7 +760,7 @@ public:
         this->_clear_board();
     }
 
-    Bitboard pieces_mask(PieceType piece_type, Color color)
+    Bitboard pieces_mask(PieceType piece_type, Color color) const
     {
         Bitboard bb;
         if (piece_type == PAWN)
@@ -750,22 +776,22 @@ public:
         else if (piece_type == KING)
             bb = this->kings;
         else
-            throw "expected PieceType, got {piece_type!r}";
+            throw "expected PieceType, got " + to_string(piece_type);
 
         return bb & this->occupied_co[color];
     }
 
-    SquareSet *pieces(PieceType piece_type, Color color)
+    SquareSet *pieces(PieceType piece_type, Color color) const
     {
         /*
         Gets pieces of the given type and color.
 
-        Returns a :class:`set of squares <chess::SquareSet>`.
+        Returns a pointer to a :class:`set of squares <chess::SquareSet>`.
         */
         return new SquareSet(this->pieces_mask(piece_type, color));
     }
 
-    Piece *piece_at(Square square)
+    Piece *piece_at(Square square) const
     {
         // Gets the :class:`piece <chess::Piece>` at the given square.
         PieceType piece_type = this->piece_type_at(square);
@@ -776,10 +802,10 @@ public:
             return new Piece(piece_type, color);
         }
         else
-            return NULL;
+            return nullptr;
     }
 
-    PieceType piece_type_at(Square square)
+    PieceType piece_type_at(Square square) const
     {
         // Gets the piece type at the given square.
         Bitboard mask = BB_SQUARES[square];
@@ -800,7 +826,7 @@ public:
             return KING;
     }
 
-    int8_t color_at(Square square)
+    int8_t color_at(Square square) const
     {
         // Gets the color of the piece at the given square.
         Bitboard mask = BB_SQUARES[square];
@@ -812,7 +838,7 @@ public:
             return -1;
     }
 
-    int8_t king(Color color)
+    int8_t king(Color color) const
     {
         /*
         Finds the king square of the given side. Returns ``-1`` if there
@@ -823,6 +849,190 @@ public:
         */
         Bitboard king_mask = this->occupied_co[color] & this->kings & ~this->promoted;
         return king_mask ? int8_t(msb(king_mask)) : -1;
+    }
+
+    Bitboard attacks_mask(Square square) const
+    {
+        Bitboard bb_square = BB_SQUARES[square];
+
+        if (bb_square & this->pawns)
+        {
+            Color color = bool(bb_square & this->occupied_co[WHITE]);
+            return BB_PAWN_ATTACKS[color][square];
+        }
+        else if (bb_square & this->knights)
+            return BB_KNIGHT_ATTACKS[square];
+        else if (bb_square & this->kings)
+            return BB_KING_ATTACKS[square];
+        else
+        {
+            Bitboard attacks = 0;
+            if (bb_square & this->bishops or bb_square & this->queens)
+                attacks = BB_DIAG_ATTACKS[square].at(BB_DIAG_MASKS[square] & this->occupied);
+            if (bb_square & this->rooks || bb_square & this->queens)
+                attacks |= (BB_RANK_ATTACKS[square].at(BB_RANK_MASKS[square] & this->occupied) |
+                            BB_FILE_ATTACKS[square].at(BB_FILE_MASKS[square] & this->occupied));
+            return attacks;
+        }
+    }
+
+    SquareSet *attacks(Square square) const
+    {
+        /*
+        Gets the set of attacked squares from the given square.
+
+        There will be no attacks if the square is empty. Pinned pieces are
+        still attacking other squares.
+
+        Returns a pointer to a :class:`set of squares <chess.SquareSet>`.
+        */
+        return new SquareSet(this->attacks_mask(square));
+    }
+
+    Bitboard attackers_mask(Color color, Square square) const
+    {
+        return this->_attackers_mask(color, square, this->occupied);
+    }
+
+    bool is_attacked_by(Color color, Square square) const
+    {
+        /*
+        Checks if the given side attacks the given square.
+
+        Pinned pieces still count as attackers. Pawns that can be captured
+        en passant are **not** considered attacked.
+        */
+        return bool(this->attackers_mask(color, square));
+    }
+
+    SquareSet attackers(Color color, Square square) const
+    {
+        /*
+        Gets the set of attackers of the given color for the given square.
+
+        Pinned pieces still count as attackers.
+
+        Returns a :class:`set of squares <chess::SquareSet>`.
+        */
+        return SquareSet(this->attackers_mask(color, square));
+    }
+
+    Bitboard pin_mask(Color color, Square square) const
+    {
+        int8_t king = this->king(color);
+        if (king == -1)
+            return BB_ALL;
+
+        Bitboard square_mask = BB_SQUARES[square];
+
+        for (const auto &[attacks, sliders] : {make_tuple(BB_FILE_ATTACKS, this->rooks | this->queens),
+                                               make_tuple(BB_RANK_ATTACKS, this->rooks | this->queens),
+                                               make_tuple(BB_DIAG_ATTACKS, this->bishops | this->queens)})
+        {
+            Bitboard rays = attacks[king].at(0);
+            if (rays & square_mask)
+            {
+                Bitboard snipers = rays & sliders & this->occupied_co[!color];
+                for (Square sniper : scan_reversed(snipers))
+                {
+                    if ((between(sniper, king) & (this->occupied | square_mask)) == square_mask)
+                        return ray(king, sniper);
+                }
+
+                break;
+            }
+        }
+
+        return BB_ALL;
+    }
+
+    SquareSet pin(Color color, Square square) const
+    {
+        /*
+        Detects an absolute pin (and its direction) of the given square to
+        the king of the given color.
+
+        Returns a :class:`set of squares <chess::SquareSet>` that mask the rank,
+        file or diagonal of the pin. If there is no pin, then a mask of the
+        entire board is returned.
+        */
+        return SquareSet(this->pin_mask(color, square));
+    }
+
+    bool is_pinned(Color color, Square square) const
+    {
+        /*
+        Detects if the given square is pinned to the king of the given color.
+        */
+        return this->pin_mask(color, square) != BB_ALL;
+    }
+
+    Piece *remove_piece_at(Square square)
+    {
+        /*
+        Removes the piece from the given square. Returns a pointer to the
+        :class:`~chess::Piece` or ``nullptr`` if the square was already empty.
+        */
+        Color color = bool(this->occupied_co[WHITE] & BB_SQUARES[square]);
+        PieceType piece_type = this->_remove_piece_at(square);
+        return piece_type ? new Piece(piece_type, color) : nullptr;
+    }
+
+    void set_piece_at(Square square, Piece *piece, bool promoted = false)
+    {
+        /*
+        Sets a piece at the given square.
+
+        An existing piece is replaced. Setting *piece* to ``nullptr`` is
+        equivalent to :func:`~chess::Board::remove_piece_at()`.
+        */
+        if (piece == nullptr)
+            this->_remove_piece_at(square);
+        else
+            this->_set_piece_at(square, piece->piece_type, piece->color, promoted);
+    }
+
+    string board_fen(bool promoted = false, ...) const
+    {
+        /*
+        Gets the board FEN (e.g.,
+        ``rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR``).
+        */
+        vector<char> builder;
+        uint8_t empty = 0;
+
+        for (Square square : SQUARES_180)
+        {
+            Piece *piece = this->piece_at(square);
+
+            if (!piece)
+                ++empty;
+            else
+            {
+                if (empty)
+                {
+                    builder.push_back('0' + empty);
+                    empty = 0;
+                }
+                builder.push_back(piece->symbol());
+                if (promoted && BB_SQUARES[square] & this->promoted)
+                    builder.push_back('~');
+            }
+
+            if (BB_SQUARES[square] & BB_FILE_H)
+            {
+                if (empty)
+                {
+                    builder.push_back('0' + empty);
+                    empty = 0;
+                }
+
+                if (square != H1)
+                    builder.push_back('/');
+            }
+        }
+
+        return string(builder.begin(), builder.end());
     }
 
 private:
@@ -857,33 +1067,165 @@ private:
         this->occupied_co[BLACK] = BB_EMPTY;
         this->occupied = BB_EMPTY;
     }
-};
 
-class SquareSet
-{
-    /*
-    A set of squares.
-
-    Square sets are internally represented by 64-bit integer masks of the
-    included squares. Bitwise operations can be used to compute unions,
-    intersections and shifts.
-
-    Also supports common set operations like
-    :func:`~chess::SquareSet::issubset()`, :func:`~chess::SquareSet::issuperset()`,
-    :func:`~chess::SquareSet::union()`, :func:`~chess::SquareSet::intersection()`,
-    :func:`~chess::SquareSet::difference()`,
-    :func:`~chess::SquareSet::symmetric_difference()` and
-    :func:`~chess::SquareSet::copy()` as well as
-    :func:`~chess::SquareSet::update()`,
-    :func:`~chess::SquareSet::intersection_update()`,
-    :func:`~chess::SquareSet::difference_update()`,
-    :func:`~chess::SquareSet::symmetric_difference_update()` and
-    :func:`~chess::SquareSet::clear()`.
-    */
-
-public:
-    SquareSet(auto squares = BB_EMPTY)
+    Bitboard _attackers_mask(Color color, Square square, Bitboard occupied) const
     {
+        Bitboard rank_pieces = BB_RANK_MASKS[square] & occupied;
+        Bitboard file_pieces = BB_FILE_MASKS[square] & occupied;
+        Bitboard diag_pieces = BB_DIAG_MASKS[square] & occupied;
+
+        Bitboard queens_and_rooks = this->queens | this->rooks;
+        Bitboard queens_and_bishops = this->queens | this->bishops;
+
+        Bitboard attackers = ((BB_KING_ATTACKS[square] & this->kings) |
+                              (BB_KNIGHT_ATTACKS[square] & this->knights) |
+                              (BB_RANK_ATTACKS[square].at(rank_pieces) & queens_and_rooks) |
+                              (BB_FILE_ATTACKS[square].at(file_pieces) & queens_and_rooks) |
+                              (BB_DIAG_ATTACKS[square].at(diag_pieces) & queens_and_bishops) |
+                              (BB_PAWN_ATTACKS[not color][square] & this->pawns));
+
+        return attackers & this->occupied_co[color];
+    }
+
+    PieceType _remove_piece_at(Square square)
+    {
+        PieceType piece_type = this->piece_type_at(square);
+        Bitboard mask = BB_SQUARES[square];
+
+        if (piece_type == PAWN)
+            this->pawns ^= mask;
+        else if (piece_type == KNIGHT)
+            this->knights ^= mask;
+        else if (piece_type == BISHOP)
+            this->bishops ^= mask;
+        else if (piece_type == ROOK)
+            this->rooks ^= mask;
+        else if (piece_type == QUEEN)
+            this->queens ^= mask;
+        else if (piece_type == KING)
+            this->kings ^= mask;
+        else
+            return 0;
+
+        this->occupied ^= mask;
+        this->occupied_co[WHITE] &= ~mask;
+        this->occupied_co[BLACK] &= ~mask;
+
+        this->promoted &= ~mask;
+
+        return piece_type;
+    }
+
+    void _set_piece_at(Square square, PieceType piece_type, Color color, bool promoted = false)
+    {
+        this->_remove_piece_at(square);
+
+        Bitboard mask = BB_SQUARES[square];
+
+        if (piece_type == PAWN)
+            this->pawns |= mask;
+        else if (piece_type == KNIGHT)
+            this->knights |= mask;
+        else if (piece_type == BISHOP)
+            this->bishops |= mask;
+        else if (piece_type == ROOK)
+            this->rooks |= mask;
+        else if (piece_type == QUEEN)
+            this->queens |= mask;
+        else if (piece_type == KING)
+            this->kings |= mask;
+        else
+            return;
+
+        this->occupied ^= mask;
+        this->occupied_co[color] ^= mask;
+
+        if (promoted)
+            this->promoted ^= mask;
+    }
+
+    void _set_board_fen(string fen)
+    {
+        // Compatibility with set_fen().
+        auto it = fen.begin();
+        auto it2 = fen.rbegin();
+        while (isspace(*it))
+            ++it;
+        while (isspace(*it2))
+            ++it2;
+        fen = string(it, it2.base());
+        if (fen.find(' ') != string::npos)
+            throw invalid_argument("expected position part of fen, got multiple parts: " + fen);
+
+        // Ensure the FEN is valid.
+        vector<string> rows;
+        for (int i = 0, dist = 0; i < fen.length(); ++i, ++dist)
+        {
+            if (fen[i] == '/')
+            {
+                rows.push_back(fen.substr(i - dist, dist));
+                dist = 0;
+            }
+        }
+        if (rows.size() != 8)
+            throw invalid_argument("expected 8 rows in position part of fen: " + fen);
+
+        // Validate each row.
+        for (const string &row : rows)
+        {
+            uint8_t field_sum = 0;
+            bool previous_was_digit = false;
+            bool previous_was_piece = false;
+
+            for (char c : row)
+            {
+                if (c == '1' || c == '2' || c == '3' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8')
+                {
+                    if (previous_was_digit)
+                        throw invalid_argument("two subsequent digits in position part of fen: " + fen);
+                    field_sum += int(c - '0');
+                    previous_was_digit = true;
+                    previous_was_piece = false;
+                }
+                else if (c == '~')
+                {
+                    if (!previous_was_piece)
+                        throw invalid_argument("'~' not after piece in position part of fen: " + fen);
+                    previous_was_digit = false;
+                    previous_was_piece = false;
+                }
+                else if (find(begin(PIECE_SYMBOLS), end(PIECE_SYMBOLS), tolower(c)) != end(PIECE_SYMBOLS))
+                {
+                    ++field_sum;
+                    previous_was_digit = false;
+                    previous_was_piece = true;
+                }
+                else
+                    throw invalid_argument("invalid character in position part of fen: " + fen);
+            }
+
+            if (field_sum != 8)
+                throw invalid_argument("expected 8 columns per row in position part of fen: " + fen);
+        }
+
+        // Clear the board.
+        this->_clear_board();
+
+        // Put pieces on the board.
+        uint8_t square_index = 0;
+        for (char c : fen)
+        {
+            if (c == '1' || c == '2' || c == '3' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8')
+                square_index += int(c);
+            else if (find(begin(PIECE_SYMBOLS), end(PIECE_SYMBOLS), tolower(c)) != end(PIECE_SYMBOLS))
+            {
+                Piece *piece = Piece::from_symbol(c);
+                this->_set_piece_at(SQUARES_180[square_index], piece->piece_type, piece->color);
+                ++square_index;
+            }
+            else if (c == '~')
+                this->promoted |= BB_SQUARES[SQUARES_180[square_index - 1]];
+        }
     }
 };
 
