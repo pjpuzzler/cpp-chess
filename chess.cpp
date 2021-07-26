@@ -14,8 +14,9 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <vector>
 #include <tuple>
 #include <regex>
-#include <stack>
+#include <deque>
 #include <functional>
+#include <optional>
 
 #include <iostream>
 
@@ -29,17 +30,17 @@ const string COLOR_NAMES[] = {"black", "white"};
 
 typedef uint8_t PieceType;
 const PieceType PIECE_TYPES[] = {1, 2, 3, 4, 5, 6}, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
-char PIECE_SYMBOLS[] = {'\0', 'p', 'n', 'b', 'r', 'q', 'k'};
-string PIECE_NAMES[] = {"", "pawn", "knight", "bishop", "rook", "queen", "king"};
+optional<char> PIECE_SYMBOLS[] = {nullopt, 'p', 'n', 'b', 'r', 'q', 'k'};
+optional<string> PIECE_NAMES[] = {nullopt, "pawn", "knight", "bishop", "rook", "queen", "king"};
 
-char piece_symbol(PieceType piece_type)
+char piece_symbol(optional<PieceType> piece_type)
 {
-    return PIECE_SYMBOLS[piece_type];
+    return *PIECE_SYMBOLS[*piece_type];
 }
 
 string piece_name(PieceType piece_type)
 {
-    return PIECE_NAMES[piece_type];
+    return *PIECE_NAMES[piece_type];
 }
 
 const unordered_map<char, string> UNICODE_PIECE_SYMBOLS = {
@@ -145,15 +146,15 @@ public:
     Termination termination;
     // The reason for the game to have ended.
 
-    int8_t winner;
-    // The winning color or ``-1`` if drawn.
+    optional<Color> winner;
+    // The winning color or ``std::nullopt`` if drawn.
 
-    Outcome(Termination termination, int8_t winner) : termination(termination), winner(winner) {}
+    Outcome(Termination termination, optional<Color> winner) : termination(termination), winner(winner) {}
 
     string result() const
     {
         // Returns ``1-0``, ``0-1`` or ``1/2-1/2``.
-        return this->winner == -1 ? "1/2-1/2" : (this->winner ? "1-0" : "0-1");
+        return this->winner == nullopt ? "1/2-1/2" : (this->winner ? "1-0" : "0-1");
     }
 };
 
@@ -506,7 +507,7 @@ public:
     Color color;
     // The piece color.
 
-    Piece(PieceType piece_type, Color color) : piece_type(piece_type), color(color) {}
+    Piece(optional<PieceType> piece_type, Color color) : piece_type(*piece_type), color(color) {}
 
     char symbol() const
     {
@@ -573,13 +574,13 @@ public:
     Square to_square;
     // The target square.
 
-    PieceType promotion;
-    // The promotion piece type or ``0``.
+    optional<PieceType> promotion;
+    // The promotion piece type or ``std::nullopt``.
 
-    PieceType drop;
-    // The drop piece type or ``0``.
+    optional<PieceType> drop;
+    // The drop piece type or ``std::nullopt``.
 
-    Move(Square from_square, Square to_square, PieceType promotion = 0, PieceType drop = 0) : from_square(from_square), to_square(to_square), promotion(promotion), drop(drop) {}
+    Move(Square from_square, Square to_square, optional<PieceType> promotion = nullopt, optional<PieceType> drop = nullopt) : from_square(from_square), to_square(to_square), promotion(promotion), drop(drop) {}
 
     string uci() const
     {
@@ -647,7 +648,7 @@ public:
             if (it2 == end(SQUARE_NAMES))
                 throw invalid_argument("uci string is invalid");
             Square to_square = distance(SQUARE_NAMES, it2);
-            Square promotion;
+            optional<Square> promotion;
             if (uci.length() == 5)
             {
                 const auto &it3 = find(PIECE_SYMBOLS, PIECE_SYMBOLS + sizeof(PIECE_SYMBOLS) / sizeof(PIECE_SYMBOLS[0]), uci[4]);
@@ -656,10 +657,10 @@ public:
                 promotion = distance(PIECE_SYMBOLS, it3);
             }
             else
-                promotion = 0;
+                promotion = nullopt;
             if (from_square == to_square)
                 throw invalid_argument("invalid uci (use 0000 for null moves): " + uci);
-            return &Move(from_square, to_square, promotion = promotion);
+            return &Move(from_square, to_square, promotion);
         }
         else
             throw invalid_argument("expected uci string to be of length 4 or 5: " + uci);
@@ -688,20 +689,20 @@ class BaseBoard
 
     The board is initialized with the standard chess starting position, unless
     otherwise specified in the optional *board_fen* argument. If *board_fen*
-    is ``""``, an empty board is created.
+    is ``std::nullopt``, an empty board is created.
     */
 
 public:
     Bitboard occupied_co[2], pawns, knights, bishops, rooks, queens, kings, promoted, occupied;
 
-    BaseBoard(const string &board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY}
+    BaseBoard(const optional<string> &board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY}
     {
-        if (board_fen.empty())
+        if (board_fen == nullopt)
             this->_clear_board();
         else if (board_fen == STARTING_BOARD_FEN)
             this->_reset_board();
         else
-            this->_set_board_fen(board_fen);
+            this->_set_board_fen(*board_fen);
     }
 
     void reset_board()
@@ -747,10 +748,10 @@ public:
         return &SquareSet(this->pieces_mask(piece_type, color));
     }
 
-    Piece *piece_at(Square square) const
+    optional<Piece *> piece_at(Square square) const
     {
         // Gets the :class:`piece <chess::Piece>` at the given square.
-        PieceType piece_type = this->piece_type_at(square);
+        optional<PieceType> piece_type = this->piece_type_at(square);
         if (piece_type)
         {
             Bitboard mask = BB_SQUARES[square];
@@ -758,16 +759,16 @@ public:
             return &Piece(piece_type, color);
         }
         else
-            return nullptr;
+            return nullopt;
     }
 
-    PieceType piece_type_at(Square square) const
+    optional<PieceType> piece_type_at(Square square) const
     {
         // Gets the piece type at the given square.
         Bitboard mask = BB_SQUARES[square];
 
         if (!(this->occupied & mask))
-            return 0; // Early return
+            return nullopt; // Early return
         else if (this->pawns & mask)
             return PAWN;
         else if (this->knights & mask)
@@ -782,7 +783,7 @@ public:
             return KING;
     }
 
-    int8_t color_at(Square square) const
+    optional<Color> color_at(Square square) const
     {
         // Gets the color of the piece at the given square.
         Bitboard mask = BB_SQUARES[square];
@@ -791,20 +792,20 @@ public:
         else if (this->occupied_co[BLACK] & mask)
             return BLACK;
         else
-            return -1;
+            return nullopt;
     }
 
-    int8_t king(Color color) const
+    optional<Square> king(Color color) const
     {
         /*
-        Finds the king square of the given side. Returns ``-1`` if there
+        Finds the king square of the given side. Returns ``std::nullopt`` if there
         is no king of that color.
 
         In variants with king promotions, only non-promoted kings are
         considered.
         */
         Bitboard king_mask = this->occupied_co[color] & this->kings & ~this->promoted;
-        return king_mask ? int8_t(msb(king_mask)) : -1;
+        return king_mask ? optional<Square>(msb(king_mask)) : nullopt;
     }
 
     Bitboard attacks_mask(Square square) const
@@ -875,8 +876,8 @@ public:
 
     Bitboard pin_mask(Color color, Square square) const
     {
-        int8_t king = this->king(color);
-        if (king == -1)
+        optional<Square> king = this->king(color);
+        if (king == nullopt)
             return BB_ALL;
 
         Bitboard square_mask = BB_SQUARES[square];
@@ -885,14 +886,14 @@ public:
                                                make_tuple(BB_RANK_ATTACKS, this->rooks | this->queens),
                                                make_tuple(BB_DIAG_ATTACKS, this->bishops | this->queens)})
         {
-            Bitboard rays = attacks[king].at(0);
+            Bitboard rays = attacks[*king].at(0);
             if (rays & square_mask)
             {
                 Bitboard snipers = rays & sliders & this->occupied_co[!color];
                 for (Square sniper : scan_reversed(snipers))
                 {
-                    if ((between(sniper, king) & (this->occupied | square_mask)) == square_mask)
-                        return ray(king, sniper);
+                    if ((between(sniper, *king) & (this->occupied | square_mask)) == square_mask)
+                        return ray(*king, sniper);
                 }
 
                 break;
@@ -923,32 +924,32 @@ public:
         return this->pin_mask(color, square) != BB_ALL;
     }
 
-    Piece *remove_piece_at(Square square)
+    optional<Piece *> remove_piece_at(Square square)
     {
         /*
         Removes the piece from the given square. Returns a pointer to the
-        :class:`~chess::Piece` or ``nullptr`` if the square was already empty.
+        :class:`~chess::Piece` or ``std::nullopt`` if the square was already empty.
         */
         Color color = bool(this->occupied_co[WHITE] & BB_SQUARES[square]);
-        PieceType piece_type = this->_remove_piece_at(square);
-        return piece_type ? &Piece(piece_type, color) : nullptr;
+        optional<PieceType> piece_type = this->_remove_piece_at(square);
+        return piece_type ? optional<Piece *>(&Piece(piece_type, color)) : nullopt;
     }
 
-    void set_piece_at(Square square, Piece *piece, bool promoted = false)
+    void set_piece_at(Square square, optional<Piece *> piece, bool promoted = false)
     {
         /*
         Sets a piece at the given square.
 
-        An existing piece is replaced. Setting *piece* to ``nullptr`` is
+        An existing piece is replaced. Setting *piece* to ``std::nullopt`` is
         equivalent to :func:`~chess::Board::remove_piece_at()`.
         */
-        if (piece == nullptr)
+        if (piece == nullopt)
             this->_remove_piece_at(square);
         else
-            this->_set_piece_at(square, piece->piece_type, piece->color, promoted);
+            this->_set_piece_at(square, (*piece)->piece_type, (*piece)->color, promoted);
     }
 
-    string board_fen(bool promoted = false, ...) const
+    string board_fen(optional<bool> promoted = false, ...) const
     {
         /*
         Gets the board FEN (e.g.,
@@ -959,7 +960,7 @@ public:
 
         for (Square square : SQUARES_180)
         {
-            Piece *piece = this->piece_at(square);
+            optional<Piece *> piece = this->piece_at(square);
 
             if (!piece)
                 ++empty;
@@ -970,7 +971,7 @@ public:
                     builder.push_back(empty + '0');
                     empty = 0;
                 }
-                builder.push_back(piece->symbol());
+                builder.push_back((*piece)->symbol());
                 if (promoted && BB_SQUARES[square] & this->promoted)
                     builder.push_back('~');
             }
@@ -1009,7 +1010,7 @@ public:
         */
         unordered_map<Square, Piece *> result;
         for (Square square : scan_reversed(this->occupied & mask))
-            result[square] = this->piece_at(square);
+            result[square] = *this->piece_at(square);
         return result;
     }
 
@@ -1031,39 +1032,39 @@ public:
         this->_set_chess960_pos(scharnagl);
     }
 
-    int16_t chess960_pos() const
+    optional<uint16_t> chess960_pos() const
     {
         /*
         Gets the Chess960 starting position index between 0 and 959,
-        or ``-1``.
+        or ``std::nullopt``.
         */
         if (this->occupied_co[WHITE] != (BB_RANK_1 | BB_RANK_2))
-            return -1;
+            return nullopt;
         if (this->occupied_co[BLACK] != (BB_RANK_7 | BB_RANK_8))
-            return -1;
+            return nullopt;
         if (this->pawns != (BB_RANK_2 | BB_RANK_7))
-            return -1;
+            return nullopt;
         if (this->promoted)
-            return -1;
+            return nullopt;
 
         // Piece counts.
         vector<Bitboard> brnqk = {this->bishops, this->rooks, this->knights, this->queens, this->kings};
         if (popcount(this->bishops) != 4 || popcount(this->rooks) != 4 || popcount(this->knights) != 4 || popcount(this->queens) != 2 || popcount(this->kings) != 2)
-            return -1;
+            return nullopt;
 
         // Symmetry.
         if (((BB_RANK_1 & this->bishops) << 56 != (BB_RANK_8 & this->bishops)) || ((BB_RANK_1 & this->rooks) << 56 != (BB_RANK_8 & this->rooks)) || ((BB_RANK_1 & this->knights) << 56 != (BB_RANK_8 & this->knights)) || ((BB_RANK_1 & this->queens) << 56 != (BB_RANK_8 & this->queens)) || ((BB_RANK_1 & this->kings) << 56 != (BB_RANK_8 & this->kings)))
-            return -1;
+            return nullopt;
 
         // Algorithm from ChessX
         Bitboard x = this->bishops & (2 + 8 + 32 + 128);
         if (!x)
-            return -1;
+            return nullopt;
         int8_t bs1 = (lsb(x) - 1) / 2;
         int8_t cc_pos = bs1;
         x = this->bishops & (1 + 4 + 16 + 64);
         if (!x)
-            return -1;
+            return nullopt;
         uint8_t bs2 = lsb(x) * 2;
         cc_pos += bs2;
 
@@ -1085,7 +1086,7 @@ public:
                 if (bb & this->kings)
                 {
                     if (rf != 1)
-                        return -1;
+                        return nullopt;
                 }
                 else
                     ++rf;
@@ -1118,7 +1119,7 @@ public:
             return cc_pos;
         }
         else
-            return -1;
+            return nullopt;
     }
 
     string unicode(bool invert_color = false, bool borders = false, string empty_square = "⭘", ...) const
@@ -1150,7 +1151,7 @@ public:
                 else if (file_index > 0)
                     builder.push_back(' ');
 
-                Piece *piece = this->piece_at(square_index);
+                Piece *piece = *this->piece_at(square_index);
 
                 if (piece)
                 {
@@ -1254,7 +1255,7 @@ public:
     BaseBoardT *copy() const
     {
         // Creates a copy of the board.
-        BaseBoardT *board = &BaseBoard("");
+        BaseBoardT *board = &BaseBoard(nullopt);
 
         board->pawns = this->pawns;
         board->knights = this->knights;
@@ -1277,7 +1278,7 @@ public:
         Creates a new empty board. Also see
         :func:`~chess::BaseBoard::clear_board()`.
         */
-        return &BaseBoardT("");
+        return &BaseBoardT(nullopt);
     }
 
     static BaseBoardT *from_chess960_pos(uint16_t scharnagl)
@@ -1342,9 +1343,9 @@ private:
         return attackers & this->occupied_co[color];
     }
 
-    PieceType _remove_piece_at(Square square)
+    optional<PieceType> _remove_piece_at(Square square)
     {
-        PieceType piece_type = this->piece_type_at(square);
+        optional<PieceType> piece_type = this->piece_type_at(square);
         Bitboard mask = BB_SQUARES[square];
 
         if (piece_type == PAWN)
@@ -1360,7 +1361,7 @@ private:
         else if (piece_type == KING)
             this->kings ^= mask;
         else
-            return 0;
+            return nullopt;
 
         this->occupied ^= mask;
         this->occupied_co[WHITE] &= ~mask;
@@ -1584,7 +1585,7 @@ public:
     Bitboard pawns, knights, bishops, rooks, queens, kings, occupied_w, occupied_b, occupied, promoted;
     Color turn;
     Bitboard castling_rights;
-    int8_t ep_square;
+    optional<Square> ep_square;
     uint8_t halfmove_clock;
     uint16_t fullmove_number;
 
@@ -1627,7 +1628,7 @@ class Board : public BaseBoard
 
     The board is initialized to the standard chess starting position,
     unless otherwise specified in the optional *fen* argument.
-    If *fen* is ``""``, an empty board is created.
+    If *fen* is ``std::nullopt``, an empty board is created.
 
     Optionally supports *chess960*. In Chess960, castling moves are encoded
     by a king move to the corresponding rook square.
@@ -1647,18 +1648,18 @@ class Board : public BaseBoard
 
 public:
     string aliases[6] = {"Standard", "Chess", "Classical", "Normal", "Illegal", "From Position"};
-    string uci_variant = "chess";
-    string xboard_variant = "normal";
+    optional<string> uci_variant = "chess";
+    optional<string> xboard_variant = "normal";
     string starting_fen = STARTING_FEN;
 
-    string tbw_suffix = ".rtbw";
-    string tbz_suffix = ".rtbz";
-    unsigned char tbw_magic[4] = {0x71, 0xe8, 0x23, 0x5d};
-    unsigned char tbz_magic[4] = {0xd7, 0x66, 0x0c, 0xa5};
-    string pawnless_tbw_suffix = "";
-    string pawnless_tbz_suffix = "";
-    unsigned char pawnless_tbw_magic;
-    unsigned char pawnless_tbz_magic;
+    optional<string> tbw_suffix = ".rtbw";
+    optional<string> tbz_suffix = ".rtbz";
+    optional<unsigned char> tbw_magic[4] = {0x71, 0xe8, 0x23, 0x5d};
+    optional<unsigned char> tbz_magic[4] = {0xd7, 0x66, 0x0c, 0xa5};
+    optional<string> pawnless_tbw_suffix = nullopt;
+    optional<string> pawnless_tbz_suffix = nullopt;
+    optional<unsigned char> pawnless_tbw_magic = nullopt;
+    optional<unsigned char> pawnless_tbz_magic = nullopt;
     bool connected_kings = false;
     bool one_king = true;
     bool captures_compulsory = false;
@@ -1678,9 +1679,9 @@ public:
     :func:`~chess::Board::clean_castling_rights()`.
     */
 
-    int8_t ep_square;
+    optional<Square> ep_square;
     /*
-    The potential en passant square on the third or sixth rank or ``-1``.
+    The potential en passant square on the third or sixth rank or ``std::nullopt``.
 
     Use :func:`~chess::Board::has_legal_en_passant()` to test if en passant
     capturing would actually be possible on the next move.
@@ -1704,7 +1705,7 @@ public:
     represented as king moves to the corresponding rook square.
     */
 
-    stack<Move> move_stack;
+    deque<Move> move_stack;
     /*
     The move stack. Use :func:`Board::push() <chess::Board::push()>`,
     :func:`Board::pop() <chess::Board::pop()>`,
@@ -1713,14 +1714,14 @@ public:
     manipulation.
     */
 
-    Board(string fen = STARTING_FEN, bool chess960 = false, ...) : BaseBoard(""), chess960(chess960), ep_square(-1)
+    Board(const optional<string> &fen = STARTING_FEN, bool chess960 = false, ...) : BaseBoard(nullopt), chess960(chess960), ep_square(nullopt)
     {
-        if (fen.empty())
+        if (fen == nullopt)
             this->clear();
-        else if (fen == Board::starting_fen)
+        else if (*fen == Board::starting_fen)
             this->reset();
         else
-            this->set_fen(fen);
+            this->set_fen(*fen);
     }
 
     LegalMoveGenerator *legal_moves() const
@@ -1749,11 +1750,78 @@ public:
         return &PseudoLegalMoveGenerator(this);
     }
 
+    void reset()
+    {
+        // Restores the starting position.
+        this->turn = WHITE;
+        this->castling_rights = BB_CORNERS;
+        this->ep_square = nullopt;
+        this->halfmove_clock = 0;
+        this->fullmove_number = 1;
+
+        this->reset_board();
+    }
+
+    void reset_board()
+    {
+        /*
+        Resets only pieces to the starting position. Use
+        :func:`~chess::Board::reset()` to fully restore the starting position
+        (including turn, castling rights, etc.).
+        */
+        BaseBoard::reset_board();
+        this->clear_stack();
+    }
+
+    void clear()
+    {
+        /*
+        Clears the board.
+
+        Resets move stack and move counters. The side to move is white. There
+        are no rooks or kings, so castling rights are removed.
+
+        In order to be in a valid :func:`~chess::Board::status()`, at least kings
+        need to be put on the board.
+        */
+        this->turn = WHITE;
+        this->castling_rights = BB_EMPTY;
+        this->ep_square = nullopt;
+        this->halfmove_clock = 0;
+        this->fullmove_number = 1;
+
+        this->clear_board();
+    }
+
+    void clear_board()
+    {
+        BaseBoard::clear_board();
+        this->clear_stack();
+    }
+
+    void clear_stack()
+    {
+        this->move_stack.clear();
+        this->_stack.clear();
+    }
+
+    BoardT *root() const
+    {
+        // Returns a copy of the root position.
+        if (!this->_stack.empty())
+        {
+            BoardT *board = &BoardT(nullopt, this->chess960);
+            this->_stack.front().restore(board);
+            return board;
+        }
+        else
+            return this->copy(false);
+    }
+
 private:
-    stack<_BoardState> _stack;
+    deque<_BoardState> _stack;
 };
 
 int main()
 {
-    Board().pawns;
 }
