@@ -3,6 +3,8 @@ This is a complete remake of niklasf's python-chess in C++
 The original version can be found here: https://github.com/niklasf/python-chess
 */
 
+#include "chess.h"
+
 #include <string>
 #include <unordered_map>
 #include <stdexcept>
@@ -461,12 +463,12 @@ vector<const vector<Bitboard>> _rays()
         for (uint8_t b = 0; b < 64; ++b)
         {
             Bitboard bb_b = BB_SQUARES[b];
-            if (BB_DIAG_ATTACKS[a][0] & bb_b)
-                rays_row.push_back((BB_DIAG_ATTACKS[a][0] & BB_DIAG_ATTACKS[b][0]) | bb_a | bb_b);
-            else if (BB_RANK_ATTACKS[a][0] & bb_b)
-                rays_row.push_back(BB_RANK_ATTACKS[a][0] | bb_a);
-            else if (BB_FILE_ATTACKS[a][0] & bb_b)
-                rays_row.push_back(BB_FILE_ATTACKS[a][0] | bb_a);
+            if (BB_DIAG_ATTACKS[a].at(0) & bb_b)
+                rays_row.push_back((BB_DIAG_ATTACKS[a].at(0) & BB_DIAG_ATTACKS[b].at(0)) | bb_a | bb_b);
+            else if (BB_RANK_ATTACKS[a].at(0) & bb_b)
+                rays_row.push_back(BB_RANK_ATTACKS[a].at(0) | bb_a);
+            else if (BB_FILE_ATTACKS[a].at(0) & bb_b)
+                rays_row.push_back(BB_FILE_ATTACKS[a].at(0) | bb_a);
             else
                 rays_row.push_back(BB_EMPTY);
         }
@@ -523,7 +525,7 @@ public:
         char symbol = this->symbol();
         if (invert_color)
             symbol = isupper(symbol) ? tolower(symbol) : toupper(symbol);
-        return UNICODE_PIECE_SYMBOLS[symbol];
+        return UNICODE_PIECE_SYMBOLS.at(symbol);
     }
 
     operator string() const
@@ -812,10 +814,10 @@ public:
         {
             Bitboard attacks = 0;
             if (bb_square & this->bishops || bb_square & this->queens)
-                attacks = BB_DIAG_ATTACKS[square][BB_DIAG_MASKS[square] & this->occupied];
+                attacks = BB_DIAG_ATTACKS[square].at(BB_DIAG_MASKS[square] & this->occupied);
             if (bb_square & this->rooks || bb_square & this->queens)
-                attacks |= (BB_RANK_ATTACKS[square][BB_RANK_MASKS[square] & this->occupied] |
-                            BB_FILE_ATTACKS[square][BB_FILE_MASKS[square] & this->occupied]);
+                attacks |= (BB_RANK_ATTACKS[square].at(BB_RANK_MASKS[square] & this->occupied) |
+                            BB_FILE_ATTACKS[square].at(BB_FILE_MASKS[square] & this->occupied));
             return attacks;
         }
     }
@@ -990,18 +992,18 @@ public:
         this->_set_board_fen(fen);
     }
 
-    unordered_map<Square, Piece *> piece_map(Bitboard mask = BB_ALL, ...) const
+    unordered_map<Square, const Piece *> piece_map(Bitboard mask = BB_ALL, ...) const
     {
         /*
         Gets a map of :class:`pieces <chess::Piece>` by square index.
         */
-        unordered_map<Square, Piece *> result;
+        unordered_map<Square, const Piece *> result;
         for (Square square : scan_reversed(this->occupied & mask))
             result[square] = *this->piece_at(square);
         return result;
     }
 
-    void set_piece_map(const unordered_map<Square, Piece *> &pieces)
+    void set_piece_map(const unordered_map<Square, const Piece *> &pieces)
     {
         /*
         Sets up the board from a map of :class:`pieces <chess::Piece>`
@@ -1138,11 +1140,11 @@ public:
                 else if (file_index > 0)
                     builder.push_back(' ');
 
-                Piece *piece = *this->piece_at(square_index);
+                optional<const Piece *> piece = this->piece_at(square_index);
 
                 if (piece)
                 {
-                    string unicode_symbol = piece->unicode_symbol(invert_color);
+                    string unicode_symbol = (*piece)->unicode_symbol(invert_color);
                     std::copy(unicode_symbol.begin(), unicode_symbol.end(), back_inserter(builder));
                 }
                 else
@@ -1278,7 +1280,7 @@ public:
         return board;
     }
 
-private:
+protected:
     void _reset_board()
     {
         this->pawns = BB_RANK_2 | BB_RANK_7;
@@ -1322,9 +1324,9 @@ private:
 
         Bitboard attackers = ((BB_KING_ATTACKS[square] & this->kings) |
                               (BB_KNIGHT_ATTACKS[square] & this->knights) |
-                              (BB_RANK_ATTACKS[square][rank_pieces] & queens_and_rooks) |
-                              (BB_FILE_ATTACKS[square][file_pieces] & queens_and_rooks) |
-                              (BB_DIAG_ATTACKS[square][diag_pieces] & queens_and_bishops) |
+                              (BB_RANK_ATTACKS[square].at(rank_pieces) & queens_and_rooks) |
+                              (BB_FILE_ATTACKS[square].at(file_pieces) & queens_and_rooks) |
+                              (BB_DIAG_ATTACKS[square].at(diag_pieces) & queens_and_bishops) |
                               (BB_PAWN_ATTACKS[!color][square] & this->pawns));
 
         return attackers & this->occupied_co[color];
@@ -1471,7 +1473,7 @@ private:
         }
     }
 
-    void _set_piece_map(const unordered_map<Square, Piece *> &pieces)
+    void _set_piece_map(const unordered_map<Square, const Piece *> &pieces)
     {
         this->_clear_board();
         for (const auto &[square, piece] : pieces)
@@ -1601,7 +1603,7 @@ public:
     }
 };
 
-class Board : protected BaseBoard
+class Board : public BaseBoard
 {
     /*
     A :class:`~chess::BaseBoard`, additional information representing
@@ -1977,7 +1979,7 @@ public:
         return bool(this->checkers_mask());
     }
 
-    bool gives_check(Move move) const
+    bool gives_check(const Move *move)
     {
         /*
         Probes if the given move would put the opponent in check. The move
@@ -2119,18 +2121,18 @@ public:
         return false;
     }
 
-    bool is_game_over(bool claim_draw = false, ...) const
+    bool is_game_over(bool claim_draw = false, ...)
     {
         return this->outcome(claim_draw) != nullopt;
     }
 
-    string result(bool claim_draw = false, ...) const
+    string result(bool claim_draw = false, ...)
     {
         optional<const Outcome *> outcome = this->outcome(claim_draw);
         return outcome ? (*outcome)->result() : "*";
     }
 
-    optional<const Outcome *> outcome(bool claim_draw = false, ...) const
+    optional<const Outcome *> outcome(bool claim_draw = false, ...)
     {
         /*
         Checks if the game is over due to
@@ -2266,7 +2268,7 @@ public:
         return this->_is_halfmoves(150);
     }
 
-    bool is_fivefold_repetition() const
+    bool is_fivefold_repetition()
     {
         /*
         Since the 1st of July 2014 a game is automatically drawn (without
@@ -2277,7 +2279,7 @@ public:
         return this->is_repetition(5);
     }
 
-    bool can_claim_draw() const
+    bool can_claim_draw()
     {
         /*
         Checks if the player to move can claim a draw by the fifty-move rule or
@@ -2293,7 +2295,7 @@ public:
         return this->_is_halfmoves(100);
     }
 
-    bool can_claim_fifty_moves() const
+    bool can_claim_fifty_moves()
     {
         /*
         Checks if the player to move can claim a draw by the fifty-move rule.
@@ -2325,7 +2327,7 @@ public:
         return false;
     }
 
-    bool can_claim_threefold_repetition() const
+    bool can_claim_threefold_repetition()
     {
         /*
         Checks if the player to move can claim a draw by threefold repetition.
@@ -2362,7 +2364,7 @@ public:
         }
 
         // Threefold repetition occured.
-        if (transpositions[transposition_key] >= 3)
+        if (transpositions.at(transposition_key) >= 3)
             return true;
 
         // The next legal move is a threefold repetition.
@@ -2371,7 +2373,7 @@ public:
             this->push(move);
             try
             {
-                if (transpositions[this->_transposition_key()] >= 2)
+                if (transpositions.at(this->_transposition_key()) >= 2)
                     return true;
             }
             catch (...)
@@ -2383,7 +2385,7 @@ public:
         return false;
     }
 
-    bool is_repetition(uint8_t count = 3) const
+    bool is_repetition(uint8_t count = 3)
     {
         /*
         Checks if the current position has repeated 3 (or a given number of)
