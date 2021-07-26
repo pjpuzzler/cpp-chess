@@ -10,6 +10,7 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <stdexcept>
 #include <algorithm>
 #include <cmath>
+#include <bitset>
 #include <vector>
 #include <tuple>
 #include <regex>
@@ -147,11 +148,7 @@ public:
     int8_t winner;
     // The winning color or ``-1`` if drawn.
 
-    Outcome(Termination termination, int8_t winner)
-    {
-        this->termination = termination;
-        this->winner = winner;
-    }
+    Outcome(Termination termination, int8_t winner) : termination(termination), winner(winner) {}
 
     string result() const
     {
@@ -239,7 +236,7 @@ const Bitboard BB_BACKRANKS = BB_RANK_1 | BB_RANK_8;
 
 uint8_t lsb(Bitboard bb)
 {
-    return (uint8_t)log2(bb & -bb);
+    return bitset<32>(bb & -bb).size() - 1;
 }
 
 vector<Square> scan_forward(Bitboard bb)
@@ -248,7 +245,7 @@ vector<Square> scan_forward(Bitboard bb)
     while (bb)
     {
         Bitboard r = bb & -bb;
-        iter.push_back((Square)log2(r));
+        iter.push_back(bitset<32>(r).count() - 1);
         bb ^= r;
     }
 
@@ -257,7 +254,7 @@ vector<Square> scan_forward(Bitboard bb)
 
 uint8_t msb(Bitboard bb)
 {
-    return (uint8_t)log2(bb);
+    return bitset<32>(bb).size() - 1;
 }
 
 vector<Square> scan_reversed(Bitboard bb)
@@ -265,13 +262,16 @@ vector<Square> scan_reversed(Bitboard bb)
     vector<Square> iter;
     while (bb)
     {
-        Square r = (Square)log2(bb);
+        Square r = bitset<32>(bb).count() - 1;
         iter.push_back(r);
         bb ^= BB_SQUARES[r];
     }
 
     return iter;
 }
+
+function<int(Bitboard)> popcount = [](Bitboard bb) -> int
+{ return bitset<32>(bb).count(); };
 
 Bitboard flip_vertical(Bitboard bb)
 {
@@ -506,11 +506,7 @@ public:
     Color color;
     // The piece color.
 
-    Piece(PieceType piece_type, Color color)
-    {
-        this->piece_type = piece_type;
-        this->color = color;
-    }
+    Piece(PieceType piece_type, Color color) : piece_type(piece_type), color(color) {}
 
     char symbol() const
     {
@@ -583,13 +579,7 @@ public:
     PieceType drop;
     // The drop piece type or ``0``.
 
-    Move(Square from_square, Square to_square, PieceType promotion = 0, PieceType drop = 0)
-    {
-        this->from_square = from_square;
-        this->to_square = to_square;
-        this->promotion = promotion;
-        this->drop = drop;
-    }
+    Move(Square from_square, Square to_square, PieceType promotion = 0, PieceType drop = 0) : from_square(from_square), to_square(to_square), promotion(promotion), drop(drop) {}
 
     string uci() const
     {
@@ -1598,27 +1588,7 @@ public:
     uint8_t halfmove_clock;
     uint16_t fullmove_number;
 
-    _BoardState(BoardT *board)
-    {
-        this->pawns = board->pawns;
-        this->knights = board->knights;
-        this->bishops = board->bishops;
-        this->rooks = board->rooks;
-        this->queens = board->queens;
-        this->kings = board->kings;
-
-        this->occupied_w = board->occupied_co[WHITE];
-        this->occupied_b = board->occupied_co[BLACK];
-        this->occupied = board->occupied;
-
-        this->promoted = board->promoted;
-
-        this->turn = board->turn;
-        this->castling_rights = board->castling_rights;
-        this->ep_square = board->ep_square;
-        this->halfmove_clock = board->halfmove_clock;
-        this->fullmove_number = board->fullmove_number;
-    }
+    _BoardState(BoardT *board) : pawns(board->pawns), knights(board->knights), bishops(board->bishops), rooks(board->rooks), queens(board->queens), kings(board->kings), occupied_w(board->occupied_co[WHITE]), occupied_b(board->occupied_co[BLACK]), occupied(board->occupied), promoted(board->promoted), turn(board->turn), castling_rights(board->castling_rights), ep_square(board->ep_square), halfmove_clock(board->halfmove_clock), fullmove_number(board->fullmove_number) {}
 
     void restore(BoardT *board) const
     {
@@ -1743,12 +1713,8 @@ public:
     manipulation.
     */
 
-    Board(string fen = STARTING_FEN, bool chess960 = false, ...) : BaseBoard("")
+    Board(string fen = STARTING_FEN, bool chess960 = false, ...) : BaseBoard(""), chess960(chess960), ep_square(-1)
     {
-        this->chess960 = chess960;
-
-        this->ep_square = -1;
-
         if (fen.empty())
             this->clear();
         else if (fen == Board::starting_fen)
