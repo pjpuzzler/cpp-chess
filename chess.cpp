@@ -588,7 +588,7 @@ public:
         The UCI representation of a null move is ``0000``.
         */
         if (this->drop)
-            return to_string(toupper(piece_symbol(this->drop))) + "@" + SQUARE_NAMES[this->to_square];
+            return toupper(piece_symbol(this->drop)) + "@" + SQUARE_NAMES[this->to_square];
         else if (this->promotion)
             return SQUARE_NAMES[this->from_square] + SQUARE_NAMES[this->to_square] + piece_symbol(this->promotion);
         else if (*this)
@@ -604,7 +604,7 @@ public:
 
     operator bool() const
     {
-        return this->from_square || this->to_square || this->promotion || this->drop;
+        return bool(this->from_square || this->to_square || this->promotion || this->drop);
     }
 
     operator string() const
@@ -963,7 +963,7 @@ public:
             {
                 if (empty)
                 {
-                    builder.push_back(empty + '0');
+                    builder.push_back(char(empty + '0'));
                     empty = 0;
                 }
                 builder.push_back((*piece)->symbol());
@@ -975,7 +975,7 @@ public:
             {
                 if (empty)
                 {
-                    builder.push_back(empty + '0');
+                    builder.push_back(char(empty + '0'));
                     empty = 0;
                 }
 
@@ -1977,6 +1977,12 @@ public:
         Returns a pointer to a :class:`set of squares <chess::SquareSet>`.
         */
         return &SquareSet(this->checkers_mask());
+    }
+
+    bool is_check() const
+    {
+        // Tests if the current side to move is in check.
+        return bool(this->checkers_mask());
     }
 
 private:
