@@ -15,6 +15,7 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <deque>
 #include <functional>
 #include <optional>
+#include <stack>
 
 #include <iostream>
 
@@ -28,10 +29,10 @@ const string COLOR_NAMES[] = {"black", "white"};
 
 typedef uint8_t PieceType;
 const PieceType PIECE_TYPES[] = {1, 2, 3, 4, 5, 6}, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
-optional<char> PIECE_SYMBOLS[] = {nullopt, 'p', 'n', 'b', 'r', 'q', 'k'};
-optional<string> PIECE_NAMES[] = {nullopt, "pawn", "knight", "bishop", "rook", "queen", "king"};
+const optional<char> PIECE_SYMBOLS[] = {nullopt, 'p', 'n', 'b', 'r', 'q', 'k'};
+const optional<const string &> PIECE_NAMES[] = {nullopt, "pawn", "knight", "bishop", "rook", "queen", "king"};
 
-char piece_symbol(optional<PieceType> piece_type)
+char piece_symbol(const optional<PieceType> piece_type)
 {
     return *PIECE_SYMBOLS[*piece_type];
 }
@@ -113,23 +114,23 @@ enum class Termination
 
     CHECKMATE = 1,
     // See :func:`chess::Board::is_checkmate()`.
-    CSTALEMATE = 2,
+    STALEMATE = 2,
     // See :func:`chess::Board::is_stalemate()`.
-    CINSUFFICIENT_MATERIAL = 3,
+    INSUFFICIENT_MATERIAL = 3,
     // See :func:`chess::Board::is_insufficient_material()`.
-    CSEVENTYFIVE_MOVES = 4,
+    SEVENTYFIVE_MOVES = 4,
     // See :func:`chess::Board::is_seventyfive_moves()`.
-    CFIVEFOLD_REPETITION = 5,
+    FIVEFOLD_REPETITION = 5,
     // See :func:`chess::Board::is_fivefold_repetition()`.
-    CFIFTY_MOVES = 6,
+    FIFTY_MOVES = 6,
     // See :func:`chess::Board::can_claim_fifty_moves()`.
-    CTHREEFOLD_REPETITION = 7,
+    THREEFOLD_REPETITION = 7,
     // See :func:`chess::Board::can_claim_threefold_repetition()`.
-    CVARIANT_WIN = 8,
+    VARIANT_WIN = 8,
     // See :func:`chess::Board::is_variant_win()`.
-    CVARIANT_LOSS = 9,
+    VARIANT_LOSS = 9,
     // See :func:`chess::Board::is_variant_loss()`.
-    CVARIANT_DRAW = 10
+    VARIANT_DRAW = 10
     // See :func:`chess::Board::is_variant_draw()`.
 };
 
@@ -147,7 +148,7 @@ public:
     optional<Color> winner;
     // The winning color or ``std::nullopt`` if drawn.
 
-    Outcome(Termination termination, optional<Color> winner) : termination(termination), winner(winner) {}
+    Outcome(Termination termination, const optional<Color> winner) : termination(termination), winner(winner) {}
 
     string result() const
     {
@@ -426,10 +427,10 @@ vector<Bitboard> _carry_rippler(Bitboard mask)
     return iter;
 }
 
-tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table(const vector<int8_t> &deltas)
+tuple<vector<Bitboard>, vector<const unordered_map<Bitboard, Bitboard>>> _attack_table(const vector<int8_t> &deltas)
 {
     vector<Bitboard> mask_table;
-    vector<unordered_map<Bitboard, Bitboard>> attack_table;
+    vector<const unordered_map<Bitboard, Bitboard>> attack_table;
 
     for (Square square : SQUARES)
     {
@@ -450,9 +451,9 @@ const auto &[BB_DIAG_MASKS, BB_DIAG_ATTACKS] = _attack_table({-9, -7, 7, 9});
 const auto &[BB_FILE_MASKS, BB_FILE_ATTACKS] = _attack_table({-8, 8});
 const auto &[BB_RANK_MASKS, BB_RANK_ATTACKS] = _attack_table({-1, 1});
 
-vector<vector<Bitboard>> _rays()
+vector<const vector<Bitboard>> _rays()
 {
-    vector<vector<Bitboard>> rays;
+    vector<const vector<Bitboard>> rays;
     for (uint8_t a = 0; a < 64; ++a)
     {
         Bitboard bb_a = BB_SQUARES[a];
@@ -460,12 +461,12 @@ vector<vector<Bitboard>> _rays()
         for (uint8_t b = 0; b < 64; ++b)
         {
             Bitboard bb_b = BB_SQUARES[b];
-            if (BB_DIAG_ATTACKS[a].at(0) & bb_b)
-                rays_row.push_back((BB_DIAG_ATTACKS[a].at(0) & BB_DIAG_ATTACKS[b].at(0)) | bb_a | bb_b);
-            else if (BB_RANK_ATTACKS[a].at(0) & bb_b)
-                rays_row.push_back(BB_RANK_ATTACKS[a].at(0) | bb_a);
-            else if (BB_FILE_ATTACKS[a].at(0) & bb_b)
-                rays_row.push_back(BB_FILE_ATTACKS[a].at(0) | bb_a);
+            if (BB_DIAG_ATTACKS[a][0] & bb_b)
+                rays_row.push_back((BB_DIAG_ATTACKS[a][0] & BB_DIAG_ATTACKS[b][0]) | bb_a | bb_b);
+            else if (BB_RANK_ATTACKS[a][0] & bb_b)
+                rays_row.push_back(BB_RANK_ATTACKS[a][0] | bb_a);
+            else if (BB_FILE_ATTACKS[a][0] & bb_b)
+                rays_row.push_back(BB_FILE_ATTACKS[a][0] | bb_a);
             else
                 rays_row.push_back(BB_EMPTY);
         }
@@ -474,7 +475,7 @@ vector<vector<Bitboard>> _rays()
     return rays;
 }
 
-const vector<vector<Bitboard>> BB_RAYS = _rays();
+const vector<const vector<Bitboard>> BB_RAYS = _rays();
 
 Bitboard ray(Square a, Square b)
 {
@@ -502,7 +503,7 @@ public:
     Color color;
     // The piece color.
 
-    Piece(optional<PieceType> piece_type, Color color) : piece_type(*piece_type), color(color) {}
+    Piece(const optional<PieceType> piece_type, Color color) : piece_type(*piece_type), color(color) {}
 
     char symbol() const
     {
@@ -522,7 +523,7 @@ public:
         char symbol = this->symbol();
         if (invert_color)
             symbol = isupper(symbol) ? tolower(symbol) : toupper(symbol);
-        return UNICODE_PIECE_SYMBOLS.at(symbol);
+        return UNICODE_PIECE_SYMBOLS[symbol];
     }
 
     operator string() const
@@ -541,15 +542,6 @@ public:
         if (it == end(PIECE_SYMBOLS))
             throw invalid_argument("symbol is invalid");
         return &Piece(distance(PIECE_SYMBOLS, it), toupper(symbol));
-    }
-};
-
-template <>
-struct hash<Piece>
-{
-    size_t operator()(const Piece &piece) const
-    {
-        return piece.piece_type + (piece.color ? -1 : 5);
     }
 };
 
@@ -575,7 +567,7 @@ public:
     optional<PieceType> drop;
     // The drop piece type or ``std::nullopt``.
 
-    Move(Square from_square, Square to_square, optional<PieceType> promotion = nullopt, optional<PieceType> drop = nullopt) : from_square(from_square), to_square(to_square), promotion(promotion), drop(drop) {}
+    Move(Square from_square, Square to_square, const optional<PieceType> promotion = nullopt, const optional<PieceType> drop = nullopt) : from_square(from_square), to_square(to_square), promotion(promotion), drop(drop) {}
 
     string uci() const
     {
@@ -690,7 +682,7 @@ class BaseBoard
 public:
     Bitboard occupied_co[2], pawns, knights, bishops, rooks, queens, kings, promoted, occupied;
 
-    BaseBoard(const optional<string> &board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY}
+    BaseBoard(const optional<const string &> &board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY}
     {
         if (board_fen == nullopt)
             this->_clear_board();
@@ -743,7 +735,7 @@ public:
         return &SquareSet(this->pieces_mask(piece_type, color));
     }
 
-    optional<Piece *> piece_at(Square square) const
+    optional<const Piece *> piece_at(Square square) const
     {
         // Gets the :class:`piece <chess::Piece>` at the given square.
         optional<PieceType> piece_type = this->piece_type_at(square);
@@ -820,10 +812,10 @@ public:
         {
             Bitboard attacks = 0;
             if (bb_square & this->bishops || bb_square & this->queens)
-                attacks = BB_DIAG_ATTACKS[square].at(BB_DIAG_MASKS[square] & this->occupied);
+                attacks = BB_DIAG_ATTACKS[square][BB_DIAG_MASKS[square] & this->occupied];
             if (bb_square & this->rooks || bb_square & this->queens)
-                attacks |= (BB_RANK_ATTACKS[square].at(BB_RANK_MASKS[square] & this->occupied) |
-                            BB_FILE_ATTACKS[square].at(BB_FILE_MASKS[square] & this->occupied));
+                attacks |= (BB_RANK_ATTACKS[square][BB_RANK_MASKS[square] & this->occupied] |
+                            BB_FILE_ATTACKS[square][BB_FILE_MASKS[square] & this->occupied]);
             return attacks;
         }
     }
@@ -881,7 +873,7 @@ public:
                                                make_tuple(BB_RANK_ATTACKS, this->rooks | this->queens),
                                                make_tuple(BB_DIAG_ATTACKS, this->bishops | this->queens)})
         {
-            Bitboard rays = attacks[*king].at(0);
+            Bitboard rays = attacks[*king][0];
             if (rays & square_mask)
             {
                 Bitboard snipers = rays & sliders & this->occupied_co[!color];
@@ -919,7 +911,7 @@ public:
         return this->pin_mask(color, square) != BB_ALL;
     }
 
-    optional<Piece *> remove_piece_at(Square square)
+    optional<const Piece *> remove_piece_at(Square square)
     {
         /*
         Removes the piece from the given square. Returns a pointer to a pointer to the
@@ -927,10 +919,10 @@ public:
         */
         Color color = bool(this->occupied_co[WHITE] & BB_SQUARES[square]);
         optional<PieceType> piece_type = this->_remove_piece_at(square);
-        return piece_type ? optional<Piece *>(&Piece(piece_type, color)) : nullopt;
+        return piece_type ? optional<const Piece *>(&Piece(piece_type, color)) : nullopt;
     }
 
-    void set_piece_at(Square square, optional<Piece *> piece, bool promoted = false)
+    void set_piece_at(Square square, const optional<const Piece *> piece, bool promoted = false)
     {
         /*
         Sets a piece at the given square.
@@ -944,7 +936,7 @@ public:
             this->_set_piece_at(square, (*piece)->piece_type, (*piece)->color, promoted);
     }
 
-    string board_fen(optional<bool> promoted = false, ...) const
+    string board_fen(const optional<bool> promoted = false, ...) const
     {
         /*
         Gets the board FEN (e.g.,
@@ -955,7 +947,7 @@ public:
 
         for (Square square : SQUARES_180)
         {
-            optional<Piece *> piece = this->piece_at(square);
+            optional<const Piece *> piece = this->piece_at(square);
 
             if (!piece)
                 ++empty;
@@ -1330,9 +1322,9 @@ private:
 
         Bitboard attackers = ((BB_KING_ATTACKS[square] & this->kings) |
                               (BB_KNIGHT_ATTACKS[square] & this->knights) |
-                              (BB_RANK_ATTACKS[square].at(rank_pieces) & queens_and_rooks) |
-                              (BB_FILE_ATTACKS[square].at(file_pieces) & queens_and_rooks) |
-                              (BB_DIAG_ATTACKS[square].at(diag_pieces) & queens_and_bishops) |
+                              (BB_RANK_ATTACKS[square][rank_pieces] & queens_and_rooks) |
+                              (BB_FILE_ATTACKS[square][file_pieces] & queens_and_rooks) |
+                              (BB_DIAG_ATTACKS[square][diag_pieces] & queens_and_bishops) |
                               (BB_PAWN_ATTACKS[!color][square] & this->pawns));
 
         return attackers & this->occupied_co[color];
@@ -1584,9 +1576,9 @@ public:
     uint8_t halfmove_clock;
     uint16_t fullmove_number;
 
-    _BoardState(BoardT *board) : pawns(board->pawns), knights(board->knights), bishops(board->bishops), rooks(board->rooks), queens(board->queens), kings(board->kings), occupied_w(board->occupied_co[WHITE]), occupied_b(board->occupied_co[BLACK]), occupied(board->occupied), promoted(board->promoted), turn(board->turn), castling_rights(board->castling_rights), ep_square(board->ep_square), halfmove_clock(board->halfmove_clock), fullmove_number(board->fullmove_number) {}
+    _BoardState(const BoardT *board) : pawns(board->pawns), knights(board->knights), bishops(board->bishops), rooks(board->rooks), queens(board->queens), kings(board->kings), occupied_w(board->occupied_co[WHITE]), occupied_b(board->occupied_co[BLACK]), occupied(board->occupied), promoted(board->promoted), turn(board->turn), castling_rights(board->castling_rights), ep_square(board->ep_square), halfmove_clock(board->halfmove_clock), fullmove_number(board->fullmove_number) {}
 
-    void restore(BoardT *board) const
+    void restore(const BoardT *board) const
     {
         board->pawns = this->pawns;
         board->knights = this->knights;
@@ -1609,13 +1601,13 @@ public:
     }
 };
 
-class Board : public BaseBoard
+class Board : protected BaseBoard
 {
     /*
     A :class:`~chess::BaseBoard`, additional information representing
     a chess position, and a :data:`move stack <chess::Board::move_stack>`.
 
-    Provides :data:`move generation <chess::Board::legal_moves>`, validation,
+    Provides :func:`move generation <chess::Board::legal_moves()>`, validation,
     :func:`parsing <chess::Board::parse_san()>`, attack generation,
     :func:`game end detection <chess::Board::is_game_over()>`,
     and the capability to :func:`make <chess::Board::push()>` and
@@ -1642,22 +1634,22 @@ class Board : public BaseBoard
     */
 
 public:
-    string aliases[6] = {"Standard", "Chess", "Classical", "Normal", "Illegal", "From Position"};
-    optional<string> uci_variant = "chess";
-    optional<string> xboard_variant = "normal";
-    string starting_fen = STARTING_FEN;
+    inline static string aliases[6] = {"Standard", "Chess", "Classical", "Normal", "Illegal", "From Position"};
+    inline static optional<const string &> uci_variant = "chess";
+    inline static optional<const string &> xboard_variant = "normal";
+    inline static string starting_fen = STARTING_FEN;
 
-    optional<string> tbw_suffix = ".rtbw";
-    optional<string> tbz_suffix = ".rtbz";
-    optional<unsigned char> tbw_magic[4] = {0x71, 0xe8, 0x23, 0x5d};
-    optional<unsigned char> tbz_magic[4] = {0xd7, 0x66, 0x0c, 0xa5};
-    optional<string> pawnless_tbw_suffix = nullopt;
-    optional<string> pawnless_tbz_suffix = nullopt;
-    optional<unsigned char> pawnless_tbw_magic = nullopt;
-    optional<unsigned char> pawnless_tbz_magic = nullopt;
-    bool connected_kings = false;
-    bool one_king = true;
-    bool captures_compulsory = false;
+    inline static optional<const string &> tbw_suffix = ".rtbw";
+    inline static optional<const string &> tbz_suffix = ".rtbz";
+    inline static optional<unsigned char> tbw_magic[4] = {0x71, 0xe8, 0x23, 0x5d};
+    inline static optional<unsigned char> tbz_magic[4] = {0xd7, 0x66, 0x0c, 0xa5};
+    inline static optional<const string &> pawnless_tbw_suffix = nullopt;
+    inline static optional<const string &> pawnless_tbz_suffix = nullopt;
+    inline static optional<unsigned char> pawnless_tbw_magic = nullopt;
+    inline static optional<unsigned char> pawnless_tbz_magic = nullopt;
+    inline static bool connected_kings = false;
+    inline static bool one_king = true;
+    inline static bool captures_compulsory = false;
 
     Color turn;
     // The side to move (``chess::WHITE`` or ``chess::BLACK``).
@@ -1700,7 +1692,7 @@ public:
     represented as king moves to the corresponding rook square.
     */
 
-    deque<Move> move_stack;
+    deque<const Move *> move_stack;
     /*
     The move stack. Use :func:`Board::push() <chess::Board::push()>`,
     :func:`Board::pop() <chess::Board::pop()>`,
@@ -1709,7 +1701,7 @@ public:
     manipulation.
     */
 
-    Board(const optional<string> &fen = STARTING_FEN, bool chess960 = false, ...) : BaseBoard(nullopt), chess960(chess960), ep_square(nullopt)
+    Board(const optional<const string &> &fen = STARTING_FEN, bool chess960 = false, ...) : BaseBoard(nullopt), chess960(chess960), ep_square(nullopt)
     {
         if (fen == nullopt)
             this->clear();
@@ -1806,7 +1798,7 @@ public:
         if (!this->_stack.empty())
         {
             BoardT *board = &BoardT(nullopt, this->chess960);
-            this->_stack.front().restore(board);
+            this->_stack.front()->restore(board);
             return board;
         }
         else
@@ -1827,22 +1819,22 @@ public:
         return 2 * (this->fullmove_number - 1) + (this->turn == BLACK);
     }
 
-    optional<Piece *> remove_piece_at(Square square)
+    optional<const Piece *> remove_piece_at(Square square)
     {
-        optional<Piece *> piece = BaseBoard::remove_piece_at(square);
+        optional<const Piece *> piece = BaseBoard::remove_piece_at(square);
         this->clear_stack();
         return piece;
     }
 
-    void set_piece_at(Square square, optional<Piece *> piece, bool promoted = false)
+    void set_piece_at(Square square, const optional<const Piece *> piece, bool promoted = false)
     {
         BaseBoard::set_piece_at(square, piece, promoted);
         this->clear_stack();
     }
 
-    vector<Move *> generate_pseudo_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
+    vector<const Move *> generate_pseudo_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
     {
-        vector<Move *> iter;
+        vector<const Move *> iter;
         Bitboard our_pieces = this->occupied_co[this->turn];
 
         // Generate piece moves.
@@ -1857,7 +1849,7 @@ public:
         // Generate castling moves.
         if (from_mask & this->kings)
         {
-            for (Move *move : this->generate_castling_moves(from_mask, to_mask))
+            for (const Move *move : this->generate_castling_moves(from_mask, to_mask))
                 iter.push_back(move);
         }
 
@@ -1929,16 +1921,16 @@ public:
         // Generate en passant captures.
         if (this->ep_square)
         {
-            for (Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
+            for (const Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
                 iter.push_back(move);
         }
         return iter;
     }
 
-    vector<Move *> generate_pseudo_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
+    vector<const Move *> generate_pseudo_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
     {
-        vector<Move *> iter;
-        if (!this->ep_square || !BB_SQUARES[*this->ep_square] & to_mask)
+        vector<const Move *> iter;
+        if (!this->ep_square || !(BB_SQUARES[*this->ep_square] & to_mask))
             return iter;
 
         if (BB_SQUARES[*this->ep_square] & this->occupied)
@@ -1953,12 +1945,12 @@ public:
         return iter;
     }
 
-    vector<Move *> generate_pseudo_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
+    vector<const Move *> generate_pseudo_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
     {
-        vector<Move *> iter;
-        for (Move *move : this->generate_pseudo_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn]))
+        vector<const Move *> iter;
+        for (const Move *move : this->generate_pseudo_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn]))
             iter.push_back(move);
-        for (Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
+        for (const Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
             iter.push_back(move);
         return iter;
     }
@@ -1966,7 +1958,7 @@ public:
     Bitboard checkers_mask() const
     {
         optional<Square> king = this->king(this->turn);
-        return king == nullopt ? BB_EMPTY : this->attackers_mask(!this->turn, king);
+        return king == nullopt ? BB_EMPTY : this->attackers_mask(!this->turn, *king);
     }
 
     SquareSet *checkers() const
@@ -1985,8 +1977,625 @@ public:
         return bool(this->checkers_mask());
     }
 
+    bool gives_check(Move move) const
+    {
+        /*
+        Probes if the given move would put the opponent in check. The move
+        must be at least pseudo-legal.
+        */
+        this->push(move);
+        try
+        {
+            return this->is_check();
+        }
+        catch (...)
+        {
+        }
+        this->pop();
+    }
+
+    bool is_into_check(const Move *move) const
+    {
+        optional<Square> king = this->king(this->turn);
+        if (king == nullopt)
+            return false;
+
+        // If already in check, look if it is an evasion.
+        Bitboard checkers = this->attackers_mask(!this->turn, *king);
+        vector<const Move *> evasions = this->_generate_evasions(king, checkers, BB_SQUARES[move->from_square], BB_SQUARES[move->to_square]);
+        if (checkers && find_if(evasions.begin(), evasions.end(), [&](const Move *evasion)
+                                { return *evasion == *move; }) == evasions.end())
+            return true;
+
+        return !this->_is_safe(*king, this->_slider_blockers(*king), move);
+    }
+
+    bool was_into_check() const
+    {
+        optional<Square> king = this->king(!this->turn);
+        return king != nullopt && this->is_attacked_by(this->turn, *king);
+    }
+
+    bool is_pseudo_legal(const Move *move) const
+    {
+        // Null moves are not pseudo-legal.
+        if (!*move)
+            return false;
+
+        // Drops are not pseudo-legal.
+        if (move->drop)
+            return false;
+
+        // Source square must not be vacant.
+        optional<PieceType> piece = this->piece_type_at(move->from_square);
+        if (!piece)
+            return false;
+
+        // Get square masks.
+        Bitboard from_mask = BB_SQUARES[move->from_square];
+        Bitboard to_mask = BB_SQUARES[move->to_square];
+
+        // Check turn.
+        if (!(this->occupied_co[this->turn] & from_mask))
+            return false;
+
+        // Only pawns can promote and only on the backrank.
+        if (move->promotion)
+            if (*piece != PAWN)
+                return false;
+
+        if (this->turn == WHITE && square_rank(move->to_square) != 7)
+            return false;
+        else if (this->turn == BLACK && square_rank(move->to_square) != 0)
+            return false;
+
+        // Handle castling.
+        if (*piece == KING)
+            move = this->_from_chess960(this->chess960, move->from_square, move->to_square);
+        vector<const Move *> castling_moves = this->generate_castling_moves();
+        if (find_if(castling_moves.begin(), castling_moves.end(), [&](const Move *castling_move)
+                    { return *castling_move == *move; }) == castling_moves.end())
+            return true;
+
+        // Destination square can not be occupied.
+        if (this->occupied_co[this->turn] & to_mask)
+            return false;
+
+        // Handle pawn moves.
+        if (*piece == PAWN)
+        {
+            vector<const Move *> pseudo_legal_moves = this->generate_pseudo_legal_moves(from_mask, to_mask);
+            return find_if(pseudo_legal_moves.begin(), pseudo_legal_moves.end(), [&](const Move *pseudo_legal_move)
+                           { return *pseudo_legal_move == *move; }) == pseudo_legal_moves.end();
+        }
+
+        // Handle all other pieces.
+        return bool(this->attacks_mask(move->from_square) & to_mask);
+    }
+
+    bool is_legal(const Move *move) const
+    {
+        return !this->is_variant_end() && this->is_pseudo_legal(move) && !this->is_into_check(move);
+    }
+
+    bool is_variant_end() const
+    {
+        /*
+        Checks if the game is over due to a special variant end condition.
+
+        Note, for example, that stalemate is not considered a variant-specific
+        end condition (this method will return ``false``), yet it can have a
+        special **result** in suicide chess (any of
+        :func:`~chess::Board::is_variant_loss()`,
+        :func:`~chess::Board::is_variant_win()`,
+        :func:`~chess::Board::is_variant_draw()` might return ``true``).
+        */
+        return false;
+    }
+
+    bool is_variant_loss() const
+    {
+        /*
+        Checks if the current side to move lost due to a variant-specific
+        condition.
+        */
+        return false;
+    }
+
+    bool is_variant_win() const
+    {
+        /*
+        Checks if the current side to move won due to a variant-specific
+        condition.
+        */
+        return false;
+    }
+
+    bool is_variant_draw() const
+    {
+        /*
+        Checks if a variant-specific drawing condition is fulfilled.
+        */
+        return false;
+    }
+
+    bool is_game_over(bool claim_draw = false, ...) const
+    {
+        return this->outcome(claim_draw) != nullopt;
+    }
+
+    string result(bool claim_draw = false, ...) const
+    {
+        optional<const Outcome *> outcome = this->outcome(claim_draw);
+        return outcome ? (*outcome)->result() : "*";
+    }
+
+    optional<const Outcome *> outcome(bool claim_draw = false, ...) const
+    {
+        /*
+        Checks if the game is over due to
+        :func:`checkmate <chess::Board::is_checkmate()>`,
+        :func:`stalemate <chess::Board::is_stalemate()>`,
+        :func:`insufficient material <chess::Board::is_insufficient_material()>`,
+        the :func:`seventyfive-move rule <chess::Board::is_seventyfive_moves()>`,
+        :func:`fivefold repetition <chess::Board::is_fivefold_repetition()>`,
+        or a :func:`variant end condition <chess::Board::is_variant_end()>`.
+        Returns the :class:`chess::Outcome` if the game has ended, otherwise
+        ``std::nullopt``.
+
+        Alternatively, use :func:`~chess::Board::is_game_over()` if you are not
+        interested in who won the game and why.
+
+        The game is not considered to be over by the
+        :func:`fifty-move rule <chess::Board::can_claim_fifty_moves()>` or
+        :func:`threefold repetition <chess::Board::can_claim_threefold_repetition()>`,
+        unless *claim_draw* is given. Note that checking the latter can be
+        slow.
+        */
+        // Variant support.
+        if (this->is_variant_loss())
+            return &Outcome(Termination::VARIANT_LOSS, !this->turn);
+        if (this->is_variant_win())
+            return &Outcome(Termination::VARIANT_WIN, this->turn);
+        if (this->is_variant_draw())
+            return &Outcome(Termination::VARIANT_DRAW, nullopt);
+
+        // Normal game end.
+        if (this->is_checkmate())
+            return &Outcome(Termination::CHECKMATE, !this->turn);
+        if (this->is_insufficient_material())
+            return &Outcome(Termination::INSUFFICIENT_MATERIAL, nullopt);
+        if (this->generate_legal_moves().empty())
+            return &Outcome(Termination::STALEMATE, nullopt);
+
+        // Automatic draws.
+        if (this->is_seventyfive_moves())
+            return &Outcome(Termination::SEVENTYFIVE_MOVES, nullopt);
+        if (this->is_fivefold_repetition())
+            return &Outcome(Termination::FIVEFOLD_REPETITION, nullopt);
+
+        // Claimable draws.
+        if (claim_draw)
+        {
+            if (this->can_claim_fifty_moves())
+                return &Outcome(Termination::FIFTY_MOVES, nullopt);
+            if (this->can_claim_threefold_repetition())
+                return &Outcome(Termination::THREEFOLD_REPETITION, nullopt);
+        }
+
+        return nullopt;
+    }
+
+    bool is_checkmate() const
+    {
+        // Checks if the current position is a checkmate.
+        if (!this->is_check())
+            return false;
+
+        return this->generate_legal_moves().empty();
+    }
+
+    bool is_stalemate() const
+    {
+        // Checks if the current position is a stalemate.
+        if (this->is_check())
+            return false;
+
+        if (this->is_variant_end())
+            return false;
+
+        return this->generate_legal_moves().empty();
+    }
+
+    bool is_insufficient_material() const
+    {
+        /*
+        Checks if neither side has sufficient winning material
+        (:func:`~chess::Board::has_insufficient_material()`).
+        */
+        return this->has_insufficient_material(WHITE) && this->has_insufficient_material(BLACK);
+    }
+
+    bool has_insufficient_material(Color color) const
+    {
+        /*
+        Checks if *color* has insufficient winning material.
+
+        This is guaranteed to return ``false`` if *color* can still win the
+        game.
+
+        The converse does not necessarily hold:
+        The implementation only looks at the material, including the colors
+        of bishops, but not considering piece positions. So fortress
+        positions or positions with forced lines may return ``false``, even
+        though there is no possible winning line.
+        */
+        if (this->occupied_co[color] & (this->pawns | this->rooks | this->queens))
+            return false;
+
+        // Knights are only insufficient material if:
+        // (1) We do not have any other pieces, including more than one knight.
+        // (2) The opponent does not have pawns, knights, bishops or rooks.
+        //     These would allow selfmate.
+        if (this->occupied_co[color] & this->knights)
+            return (popcount(this->occupied_co[color]) <= 2 &&
+                    !(this->occupied_co[!color] & ~this->kings & ~this->queens));
+
+        // Bishops are only insufficient material if:
+        // (1) We do not have any other pieces, including bishops of the
+        //     opposite color.
+        // (2) The opponent does not have bishops of the opposite color,
+        //     pawns or knights. These would allow selfmate.
+        if (this->occupied_co[color] & this->bishops)
+        {
+            bool same_color = (!(this->bishops & BB_DARK_SQUARES)) || (!(this->bishops & BB_LIGHT_SQUARES));
+            return same_color && !this->pawns && !this->knights;
+        }
+
+        return true;
+    }
+
+    bool is_seventyfive_moves() const
+    {
+        /*
+        Since the 1st of July 2014, a game is automatically drawn (without
+        a claim by one of the players) if the half-move clock since a capture
+        or pawn move is equal to or greater than 150. Other means to end a game
+        take precedence.
+        */
+        return this->_is_halfmoves(150);
+    }
+
+    bool is_fivefold_repetition() const
+    {
+        /*
+        Since the 1st of July 2014 a game is automatically drawn (without
+        a claim by one of the players) if a position occurs for the fifth time.
+        Originally this had to occur on consecutive alternating moves, but
+        this has since been revised.
+        */
+        return this->is_repetition(5);
+    }
+
+    bool can_claim_draw() const
+    {
+        /*
+        Checks if the player to move can claim a draw by the fifty-move rule or
+        by threefold repetition.
+
+        Note that checking the latter can be slow.
+        */
+        return this->can_claim_fifty_moves() || this->can_claim_threefold_repetition();
+    }
+
+    bool is_fifty_moves() const
+    {
+        return this->_is_halfmoves(100);
+    }
+
+    bool can_claim_fifty_moves() const
+    {
+        /*
+        Checks if the player to move can claim a draw by the fifty-move rule.
+
+        Draw by the fifty-move rule can be claimed once the clock of halfmoves
+        since the last capture or pawn move becomes equal or greater to 100,
+        or if there is a legal move that achieves this. Other means of ending
+        the game take precedence.
+        */
+        if (this->is_fifty_moves())
+            return true;
+
+        if (this->halfmove_clock >= 99)
+            for (const Move *move : this->generate_legal_moves())
+                if (!this->is_zeroing(move))
+                {
+                    this->push(move);
+                    try
+                    {
+                        if (this->is_fifty_moves())
+                            return true;
+                    }
+                    catch (...)
+                    {
+                    }
+                    this->pop();
+                }
+
+        return false;
+    }
+
+    bool can_claim_threefold_repetition() const
+    {
+        /*
+        Checks if the player to move can claim a draw by threefold repetition.
+
+        Draw by threefold repetition can be claimed if the position on the
+        board occured for the third time or if such a repetition is reached
+        with one of the possible legal moves.
+
+        Note that checking this can be slow: In the worst case
+        scenario, every legal move has to be tested and the entire game has to
+        be replayed because there is no incremental transposition table.
+        */
+        auto transposition_key = this->_transposition_key();
+        unordered_map<tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, optional<Square>>, uint8_t> transpositions;
+        ++transpositions[transposition_key];
+
+        // Count positions.
+        stack<const Move *> switchyard;
+        while (!this->move_stack.empty())
+        {
+            Move *move = this->pop();
+            switchyard.push(move);
+
+            if (this->is_irreversible(move))
+                break;
+
+            ++transpositions[this->_transposition_key()];
+        }
+
+        while (!switchyard.empty())
+        {
+            this->push(switchyard.top());
+            switchyard.pop();
+        }
+
+        // Threefold repetition occured.
+        if (transpositions[transposition_key] >= 3)
+            return true;
+
+        // The next legal move is a threefold repetition.
+        for (const Move *move : this->generate_legal_moves())
+        {
+            this->push(move);
+            try
+            {
+                if (transpositions[this->_transposition_key()] >= 2)
+                    return true;
+            }
+            catch (...)
+            {
+            }
+            this->pop();
+        }
+
+        return false;
+    }
+
+    bool is_repetition(uint8_t count = 3) const
+    {
+        /*
+        Checks if the current position has repeated 3 (or a given number of)
+        times.
+
+        Unlike :func:`~chess::Board::can_claim_threefold_repetition()`,
+        this does not consider a repetition that can be played on the next
+        move.
+
+        Note that checking this can be slow: In the worst case, the entire
+        game has to be replayed because there is no incremental transposition
+        table.
+        */
+        // Fast check, based on occupancy only.
+        uint8_t maybe_repetitions = 1;
+        for (auto &it = this->_stack.rbegin(); it != this->_stack.rend(); ++it)
+        {
+            const _BoardState *state = *it;
+            if (state->occupied == this->occupied)
+            {
+                ++maybe_repetitions;
+                if (maybe_repetitions >= count)
+                    break;
+            }
+        }
+        if (maybe_repetitions < count)
+            return false;
+
+        // Check full replay.
+        auto transposition_key = this->_transposition_key();
+        stack<const Move *> switchyard;
+
+        try
+        {
+            while (true)
+            {
+                if (count <= 1)
+                    return true;
+
+                if (this->move_stack.size() < count - 1)
+                    break;
+
+                Move *move = this->pop();
+                switchyard.push(move);
+
+                if (this->is_irreversible(move))
+                    break;
+
+                if (this->_transposition_key() == transposition_key)
+                    --count;
+            }
+        }
+        catch (...)
+        {
+        }
+        while (!switchyard.empty())
+        {
+            this->push(switchyard.top());
+            switchyard.pop();
+        }
+
+        return false;
+    }
+
+    void push(const Move *move)
+    {
+        /*
+        Updates the position with the given *move* and puts it onto the
+        move stack.
+
+        Null moves just increment the move counters, switch turns and forfeit
+        en passant capturing.
+
+        .. warning::
+            Moves are not checked for legality. It is the caller's
+            responsibility to ensure that the move is at least pseudo-legal or
+            a null move.
+        */
+        // Push move and remember board state.
+        move = this->_to_chess960(move);
+        _BoardState *board_state = this->_board_state();
+        this->castling_rights = this->clean_castling_rights(); // Before pushing stack
+        this->move_stack.push_back(this->_from_chess960(this->chess960, move->from_square, move->to_square, move->promotion, move->drop));
+        this->_stack.push_back(board_state);
+
+        // Reset en passant square.
+        ep_square = this->ep_square;
+        this->ep_square = nullopt;
+
+        // Increment move counters.
+        ++this->halfmove_clock;
+        if (this->turn == BLACK)
+            ++this->fullmove_number;
+
+        // On a null move, simply swap turns and reset the en passant square.
+        if (!*move)
+        {
+            this->turn = !this->turn;
+            return;
+        }
+
+        // Drops.
+        if (move->drop)
+        {
+            this->_set_piece_at(move->to_square, *move->drop, this->turn);
+            this->turn = !this->turn;
+            return;
+        }
+
+        // Zero the half-move clock.
+        if (this->is_zeroing(move))
+            this->halfmove_clock = 0;
+
+        Bitboard from_bb = BB_SQUARES[move->from_square];
+        Bitboard to_bb = BB_SQUARES[move->to_square];
+
+        bool promoted = bool(this->promoted & from_bb);
+        optional<PieceType> piece_type = this->_remove_piece_at(move->from_square);
+        if (piece_type == nullopt)
+            throw "push() expects move to be pseudo-legal, but got " + string(*move) + " in " + this->board_fen();
+        Square capture_square = move->to_square;
+        optional<PieceType> captured_piece_type = this->piece_type_at(capture_square);
+
+        // Update castling rights.
+        this->castling_rights &= ~to_bb & ~from_bb;
+        if (piece_type == KING && !promoted)
+        {
+            if (this->turn == WHITE)
+                this->castling_rights &= ~BB_RANK_1;
+            else
+                this->castling_rights &= ~BB_RANK_8;
+        }
+        else if (captured_piece_type == KING && !(this->promoted & to_bb))
+            if (this->turn == WHITE && square_rank(move->to_square) == 7)
+                this->castling_rights &= ~BB_RANK_8;
+            else if (this->turn == BLACK && square_rank(move->to_square) == 0)
+                this->castling_rights &= ~BB_RANK_1;
+
+        // Handle special pawn moves.
+        if (piece_type == PAWN)
+        {
+            int8_t diff = move->to_square - move->from_square;
+
+            if (diff == 16 && square_rank(move->from_square) == 1)
+                this->ep_square = move->from_square + 8;
+            else if (diff == -16 && square_rank(move->from_square) == 6)
+                this->ep_square = move->from_square - 8;
+            else if (move->to_square == ep_square && (abs(diff) == 7 || abs(diff) == 9) && !captured_piece_type)
+            {
+                // Remove pawns captured en passant.
+                int8_t down = this->turn == WHITE ? -8 : 8;
+                capture_square = *ep_square + down;
+                captured_piece_type = this->_remove_piece_at(capture_square);
+            }
+        }
+
+        // Promotion.
+        if (move->promotion)
+        {
+            promoted = true;
+            piece_type = move->promotion;
+        }
+
+        // Castling.
+        bool castling = piece_type == KING && this->occupied_co[this->turn] & to_bb;
+        if (castling)
+        {
+            bool a_side = square_file(move->to_square) < square_file(move->from_square);
+
+            this->_remove_piece_at(move->from_square);
+            this->_remove_piece_at(move->to_square);
+
+            if (a_side)
+            {
+                this->_set_piece_at(this->turn == WHITE ? C1 : C8, KING, this->turn);
+                this->_set_piece_at(this->turn == WHITE ? D1 : D8, ROOK, this->turn);
+            }
+            else
+            {
+                this->_set_piece_at(this->turn == WHITE ? G1 : G8, KING, this->turn);
+                this->_set_piece_at(this->turn == WHITE ? F1 : F8, ROOK, this->turn);
+            }
+        }
+
+        // Put the piece on the target square.
+        if (!castling)
+        {
+            bool was_promoted = bool(this->promoted & to_bb);
+            this->_set_piece_at(move->to_square, *piece_type, this->turn, promoted);
+
+            if (captured_piece_type)
+                this->_push_capture(move, capture_square, *captured_piece_type, was_promoted);
+        }
+
+        // Swap turn.
+        this->turn = !this->turn;
+    }
+
 private:
-    deque<_BoardState> _stack;
+    deque<const _BoardState *> _stack;
+
+    bool _is_halfmoves(uint8_t n) const
+    {
+        return this->halfmove_clock >= n && !this->generate_legal_moves().empty();
+    }
+
+    _BoardState *_board_state() const
+    {
+        return &_BoardState(this);
+    }
+
+    void _push_capture(const Move *move, Square capture_square, PieceType piece_type, bool was_promoted) const {}
 };
 
 int main()
