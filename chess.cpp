@@ -11,7 +11,6 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <algorithm>
 #include <cmath>
 #include <vector>
-#include <bit>
 #include <tuple>
 #include <regex>
 #include <stack>
@@ -549,7 +548,7 @@ public:
         const auto &it = find(PIECE_SYMBOLS, PIECE_SYMBOLS + sizeof(PIECE_SYMBOLS) / sizeof(PIECE_SYMBOLS[0]), tolower(symbol));
         if (it == end(PIECE_SYMBOLS))
             throw invalid_argument("symbol is invalid");
-        return new Piece(distance(PIECE_SYMBOLS, it), toupper(symbol));
+        return &Piece(distance(PIECE_SYMBOLS, it), toupper(symbol));
     }
 };
 
@@ -646,7 +645,7 @@ public:
             if (it2 == end(SQUARE_NAMES))
                 throw invalid_argument("uci string is invalid");
             Square square = distance(SQUARE_NAMES, it2);
-            return new Move(square, square, drop = drop);
+            return &Move(square, square, drop = drop);
         }
         else if (4 <= uci.length() && uci.length() <= 5)
         {
@@ -670,7 +669,7 @@ public:
                 promotion = 0;
             if (from_square == to_square)
                 throw invalid_argument("invalid uci (use 0000 for null moves): " + uci);
-            return new Move(from_square, to_square, promotion = promotion);
+            return &Move(from_square, to_square, promotion = promotion);
         }
         else
             throw invalid_argument("expected uci string to be of length 4 or 5: " + uci);
@@ -685,7 +684,7 @@ public:
         forfeits en passant capturing). Null moves evaluate to ``false`` in
         boolean contexts.
         */
-        return new Move(0, 0);
+        return &Move(0, 0);
     }
 };
 
@@ -755,7 +754,7 @@ public:
 
         Returns a pointer to a :class:`set of squares <chess::SquareSet>`.
         */
-        return new SquareSet(this->pieces_mask(piece_type, color));
+        return &SquareSet(this->pieces_mask(piece_type, color));
     }
 
     Piece *piece_at(Square square) const
@@ -766,7 +765,7 @@ public:
         {
             Bitboard mask = BB_SQUARES[square];
             Color color = bool(this->occupied_co[WHITE] & mask);
-            return new Piece(piece_type, color);
+            return &Piece(piece_type, color);
         }
         else
             return nullptr;
@@ -834,7 +833,7 @@ public:
         else
         {
             Bitboard attacks = 0;
-            if (bb_square & this->bishops or bb_square & this->queens)
+            if (bb_square & this->bishops || bb_square & this->queens)
                 attacks = BB_DIAG_ATTACKS[square].at(BB_DIAG_MASKS[square] & this->occupied);
             if (bb_square & this->rooks || bb_square & this->queens)
                 attacks |= (BB_RANK_ATTACKS[square].at(BB_RANK_MASKS[square] & this->occupied) |
@@ -853,7 +852,7 @@ public:
 
         Returns a pointer to a :class:`set of squares <chess.SquareSet>`.
         */
-        return new SquareSet(this->attacks_mask(square));
+        return &SquareSet(this->attacks_mask(square));
     }
 
     Bitboard attackers_mask(Color color, Square square) const
@@ -942,7 +941,7 @@ public:
         */
         Color color = bool(this->occupied_co[WHITE] & BB_SQUARES[square]);
         PieceType piece_type = this->_remove_piece_at(square);
-        return piece_type ? new Piece(piece_type, color) : nullptr;
+        return piece_type ? &Piece(piece_type, color) : nullptr;
     }
 
     void set_piece_at(Square square, Piece *piece, bool promoted = false)
@@ -1265,7 +1264,7 @@ public:
     BaseBoardT *copy() const
     {
         // Creates a copy of the board.
-        BaseBoardT *board = new BaseBoard("");
+        BaseBoardT *board = &BaseBoard("");
 
         board->pawns = this->pawns;
         board->knights = this->knights;
@@ -1288,7 +1287,7 @@ public:
         Creates a new empty board. Also see
         :func:`~chess::BaseBoard::clear_board()`.
         */
-        return new BaseBoardT("");
+        return &BaseBoardT("");
     }
 
     static BaseBoardT *from_chess960_pos(uint16_t scharnagl)
@@ -1766,7 +1765,7 @@ public:
         Wraps :func:`~chess::Board::generate_legal_moves()` and
         :func:`~chess::Board::is_legal()`.
         */
-        return new LegalMoveGenerator(this);
+        return &LegalMoveGenerator(this);
     }
 
     PseudoLegalMoveGenerator *pseudo_legal_moves() const
@@ -1781,7 +1780,7 @@ public:
         Wraps :func:`~chess::Board::generate_pseudo_legal_moves()` and
         :func:`~chess::Board::is_pseudo_legal()`.
         */
-        return new PseudoLegalMoveGenerator(this);
+        return &PseudoLegalMoveGenerator(this);
     }
 
 private:
