@@ -3,8 +3,6 @@ This is a complete remake of niklasf's python-chess in C++
 The original version can be found here: https://github.com/niklasf/python-chess
 */
 
-#include "chess.h"
-
 #include <string>
 #include <unordered_map>
 #include <stdexcept>
@@ -249,7 +247,6 @@ vector<Square> scan_forward(Bitboard bb)
         iter.push_back(bitset<32>(r).count() - 1);
         bb ^= r;
     }
-
     return iter;
 }
 
@@ -267,7 +264,6 @@ vector<Square> scan_reversed(Bitboard bb)
         iter.push_back(r);
         bb ^= BB_SQUARES[r];
     }
-
     return iter;
 }
 
@@ -427,7 +423,6 @@ vector<Bitboard> _carry_rippler(Bitboard mask)
         if (!subset)
             break;
     }
-
     return iter;
 }
 
@@ -862,16 +857,16 @@ public:
         return bool(this->attackers_mask(color, square));
     }
 
-    SquareSet attackers(Color color, Square square) const
+    SquareSet *attackers(Color color, Square square) const
     {
         /*
         Gets the set of attackers of the given color for the given square.
 
         Pinned pieces still count as attackers.
 
-        Returns a :class:`set of squares <chess::SquareSet>`.
+        Returns a pointer to a :class:`set of squares <chess::SquareSet>`.
         */
-        return SquareSet(this->attackers_mask(color, square));
+        return &SquareSet(this->attackers_mask(color, square));
     }
 
     Bitboard pin_mask(Color color, Square square) const
@@ -903,17 +898,17 @@ public:
         return BB_ALL;
     }
 
-    SquareSet pin(Color color, Square square) const
+    SquareSet *pin(Color color, Square square) const
     {
         /*
         Detects an absolute pin (and its direction) of the given square to
         the king of the given color.
 
-        Returns a :class:`set of squares <chess::SquareSet>` that mask the rank,
+        Returns a pointer to a :class:`set of squares <chess::SquareSet>` that mask the rank,
         file or diagonal of the pin. If there is no pin, then a mask of the
         entire board is returned.
         */
-        return SquareSet(this->pin_mask(color, square));
+        return &SquareSet(this->pin_mask(color, square));
     }
 
     bool is_pinned(Color color, Square square) const
@@ -927,7 +922,7 @@ public:
     optional<Piece *> remove_piece_at(Square square)
     {
         /*
-        Removes the piece from the given square. Returns a pointer to the
+        Removes the piece from the given square. Returns a pointer to a pointer to the
         :class:`~chess::Piece` or ``std::nullopt`` if the square was already empty.
         */
         Color color = bool(this->occupied_co[WHITE] & BB_SQUARES[square]);
@@ -1155,7 +1150,7 @@ public:
 
                 if (piece)
                 {
-                    string unicode_symbol = piece->unicode_symbol(invert_color = invert_color);
+                    string unicode_symbol = piece->unicode_symbol(invert_color);
                     std::copy(unicode_symbol.begin(), unicode_symbol.end(), back_inserter(builder));
                 }
                 else
@@ -1213,7 +1208,7 @@ public:
     BaseBoardT *transform(function<Bitboard(Bitboard)> f) const
     {
         /*
-        Returns a transformed copy of the board by applying a bitboard
+        Returns a pointer to a transformed copy of the board by applying a bitboard
         transformation function.
 
         Available transformations include :func:`chess::flip_vertical()`,
@@ -1239,7 +1234,7 @@ public:
     BaseBoardT *mirror() const
     {
         /*
-        Returns a mirrored copy of the board.
+        Returns a pointer to a mirrored copy of the board.
 
         The board is mirrored vertically and piece colors are swapped, so that
         the position is equivalent modulo color.
@@ -1807,7 +1802,7 @@ public:
 
     BoardT *root() const
     {
-        // Returns a copy of the root position.
+        // Returns a pointer to a copy of the root position.
         if (!this->_stack.empty())
         {
             BoardT *board = &BoardT(nullopt, this->chess960);
@@ -1816,6 +1811,172 @@ public:
         }
         else
             return this->copy(false);
+    }
+
+    uint16_t ply() const
+    {
+        /*
+        Returns the number of half-moves since the start of the game, as
+        indicated by :data:`~chess::Board::fullmove_number` and
+        :data:`~chess::Board::turn`.
+
+        If moves have been pushed from the beginning, this is usually equal to
+        ``board.move_stack.size()``. But note that a board can be set up with
+        arbitrary starting positions, and the stack can be cleared.
+        */
+        return 2 * (this->fullmove_number - 1) + (this->turn == BLACK);
+    }
+
+    optional<Piece *> remove_piece_at(Square square)
+    {
+        optional<Piece *> piece = BaseBoard::remove_piece_at(square);
+        this->clear_stack();
+        return piece;
+    }
+
+    void set_piece_at(Square square, optional<Piece *> piece, bool promoted = false)
+    {
+        BaseBoard::set_piece_at(square, piece, promoted);
+        this->clear_stack();
+    }
+
+    vector<Move *> generate_pseudo_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
+    {
+        vector<Move *> iter;
+        Bitboard our_pieces = this->occupied_co[this->turn];
+
+        // Generate piece moves.
+        Bitboard non_pawns = our_pieces & ~this->pawns & from_mask;
+        for (Square from_square : scan_reversed(non_pawns))
+        {
+            Bitboard moves = this->attacks_mask(from_square) & ~our_pieces & to_mask;
+            for (Square to_square : scan_reversed(moves))
+                iter.push_back(&Move(from_square, to_square));
+        }
+
+        // Generate castling moves.
+        if (from_mask & this->kings)
+        {
+            for (Move *move : this->generate_castling_moves(from_mask, to_mask))
+                iter.push_back(move);
+        }
+
+        // The remaining moves are all pawn moves.
+        Bitboard pawns = this->pawns & this->occupied_co[this->turn] & from_mask;
+        if (!pawns)
+            return;
+
+        // Generate pawn captures.
+        Bitboard capturers = pawns;
+        for (Square from_square : scan_reversed(capturers))
+        {
+            Bitboard targets = (BB_PAWN_ATTACKS[this->turn][from_square] &
+                                this->occupied_co[!this->turn] & to_mask);
+
+            for (Square to_square : scan_reversed(targets))
+            {
+                if (square_rank(to_square) == 0 || square_rank(to_square) == 7)
+                {
+                    iter.push_back(&Move(from_square, to_square, QUEEN));
+                    iter.push_back(&Move(from_square, to_square, ROOK));
+                    iter.push_back(&Move(from_square, to_square, BISHOP));
+                    iter.push_back(&Move(from_square, to_square, KNIGHT));
+                }
+                else
+                    iter.push_back(&Move(from_square, to_square));
+            }
+        }
+
+        // Prepare pawn advance generation.
+        Bitboard single_moves, double_moves;
+        if (this->turn == WHITE)
+        {
+            single_moves = pawns << 8 & ~this->occupied;
+            double_moves = single_moves << 8 & ~this->occupied & (BB_RANK_3 | BB_RANK_4);
+        }
+        else
+        {
+            single_moves = pawns >> 8 & ~this->occupied;
+            double_moves = single_moves >> 8 & ~this->occupied & (BB_RANK_6 | BB_RANK_5);
+        }
+
+        single_moves &= to_mask;
+        double_moves &= to_mask;
+
+        // Generate single pawn moves.
+        for (Square to_square : scan_reversed(single_moves))
+        {
+            Square from_square = to_square + (this->turn == BLACK ? 8 : -8);
+
+            if (square_rank(to_square) == 0 || square_rank(to_square) == 7)
+            {
+                iter.push_back(&Move(from_square, to_square, QUEEN));
+                iter.push_back(&Move(from_square, to_square, ROOK));
+                iter.push_back(&Move(from_square, to_square, BISHOP));
+                iter.push_back(&Move(from_square, to_square, KNIGHT));
+            }
+            else
+                iter.push_back(&Move(from_square, to_square));
+        }
+
+        // Generate double pawn moves.
+        for (Square to_square : scan_reversed(double_moves))
+        {
+            Square from_square = to_square + (this->turn == BLACK ? 16 : -16);
+            iter.push_back(&Move(from_square, to_square));
+        }
+
+        // Generate en passant captures.
+        if (this->ep_square)
+        {
+            for (Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
+                iter.push_back(move);
+        }
+        return iter;
+    }
+
+    vector<Move *> generate_pseudo_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
+    {
+        vector<Move *> iter;
+        if (!this->ep_square || !BB_SQUARES[*this->ep_square] & to_mask)
+            return iter;
+
+        if (BB_SQUARES[*this->ep_square] & this->occupied)
+            return iter;
+
+        Bitboard capturers = (this->pawns & this->occupied_co[this->turn] & from_mask &
+                              BB_PAWN_ATTACKS[!this->turn][*this->ep_square] &
+                              BB_RANKS[this->turn ? 4 : 3]);
+
+        for (Square capturer : scan_reversed(capturers))
+            iter.push_back(&Move(capturer, *this->ep_square));
+        return iter;
+    }
+
+    vector<Move *> generate_pseudo_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const
+    {
+        vector<Move *> iter;
+        for (Move *move : this->generate_pseudo_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn]))
+            iter.push_back(move);
+        for (Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
+            iter.push_back(move);
+        return iter;
+    }
+
+    Bitboard checkers_mask() const
+    {
+        optional<Square> king = this->king(this->turn);
+        return king == nullopt ? BB_EMPTY : this->attackers_mask(!this->turn, king);
+    }
+
+    SquareSet *checkers() const
+    {
+        /*
+        Gets the pieces currently giving check.
+
+        Returns a pointer to a :class:`set of squares <chess::SquareSet>`.
+        */
+        return &SquareSet(this->checkers_mask());
     }
 
 private:
