@@ -3,6 +3,8 @@ This is a complete remake of niklasf's python-chess in C++
 The original version can be found here: https://github.com/niklasf/python-chess
 */
 
+#include "chess.h"
+
 #include <string>
 #include <unordered_map>
 #include <stdexcept>
@@ -13,6 +15,7 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <tuple>
 #include <regex>
 #include <stack>
+#include <functional>
 
 #include <iostream>
 
@@ -64,7 +67,7 @@ const string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq 
 const string STARTING_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 // The board part of the FEN for the standard chess starting position.
 
-enum Status
+enum class Status
 {
     VALID = 0,
     NO_WHITE_KING = 1 << 0,
@@ -105,7 +108,7 @@ const Status STATUS_RACE_MATERIAL = Status::RACE_MATERIAL;
 const Status STATUS_TOO_MANY_CHECKERS = Status::TOO_MANY_CHECKERS;
 const Status STATUS_IMPOSSIBLE_CHECK = Status::IMPOSSIBLE_CHECK;
 
-enum Termination
+enum class Termination
 {
     // Enum with reasons for a game to be over.
 
@@ -686,37 +689,7 @@ public:
     }
 };
 
-class BaseBoard;
-
 typedef BaseBoard BaseBoardT;
-
-class SquareSet
-{
-    /*
-    A set of squares.
-
-    Square sets are internally represented by 64-bit integer masks of the
-    included squares. Bitwise operations can be used to compute unions,
-    intersections and shifts.
-
-    Also supports common set operations like
-    :func:`~chess::SquareSet::issubset()`, :func:`~chess::SquareSet::issuperset()`,
-    :func:`~chess::SquareSet::union()`, :func:`~chess::SquareSet::intersection()`,
-    :func:`~chess::SquareSet::difference()`,
-    :func:`~chess::SquareSet::symmetric_difference()` and
-    :func:`~chess::SquareSet::copy()` as well as
-    :func:`~chess::SquareSet::update()`,
-    :func:`~chess::SquareSet::intersection_update()`,
-    :func:`~chess::SquareSet::difference_update()`,
-    :func:`~chess::SquareSet::symmetric_difference_update()` and
-    :func:`~chess::SquareSet::clear()`.
-    */
-
-public:
-    SquareSet(auto squares = BB_EMPTY)
-    {
-    }
-};
 
 class BaseBoard
 {
@@ -730,9 +703,9 @@ class BaseBoard
     */
 
 public:
-    Bitboard occupied_co[2] = {BB_EMPTY, BB_EMPTY}, pawns, knights, bishops, rooks, queens, kings, promoted, occupied;
+    Bitboard occupied_co[2], pawns, knights, bishops, rooks, queens, kings, promoted, occupied;
 
-    BaseBoard(const string &board_fen = STARTING_BOARD_FEN)
+    BaseBoard(const string &board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY}
     {
         if (board_fen.empty())
             this->_clear_board();
@@ -1613,9 +1586,63 @@ private:
     }
 };
 
-class Board;
-
 typedef Board BoardT;
+
+class _BoardState
+{
+
+public:
+    Bitboard pawns, knights, bishops, rooks, queens, kings, occupied_w, occupied_b, occupied, promoted;
+    Color turn;
+    Bitboard castling_rights;
+    int8_t ep_square;
+    uint8_t halfmove_clock;
+    uint16_t fullmove_number;
+
+    _BoardState(BoardT *board)
+    {
+        this->pawns = board->pawns;
+        this->knights = board->knights;
+        this->bishops = board->bishops;
+        this->rooks = board->rooks;
+        this->queens = board->queens;
+        this->kings = board->kings;
+
+        this->occupied_w = board->occupied_co[WHITE];
+        this->occupied_b = board->occupied_co[BLACK];
+        this->occupied = board->occupied;
+
+        this->promoted = board->promoted;
+
+        this->turn = board->turn;
+        this->castling_rights = board->castling_rights;
+        this->ep_square = board->ep_square;
+        this->halfmove_clock = board->halfmove_clock;
+        this->fullmove_number = board->fullmove_number;
+    }
+
+    void restore(BoardT *board) const
+    {
+        board->pawns = this->pawns;
+        board->knights = this->knights;
+        board->bishops = this->bishops;
+        board->rooks = this->rooks;
+        board->queens = this->queens;
+        board->kings = this->kings;
+
+        board->occupied_co[WHITE] = this->occupied_w;
+        board->occupied_co[BLACK] = this->occupied_b;
+        board->occupied = this->occupied;
+
+        board->promoted = this->promoted;
+
+        board->turn = this->turn;
+        board->castling_rights = this->castling_rights;
+        board->ep_square = this->ep_square;
+        board->halfmove_clock = this->halfmove_clock;
+        board->fullmove_number = this->fullmove_number;
+    }
+};
 
 class Board : public BaseBoard
 {
@@ -1650,7 +1677,7 @@ class Board : public BaseBoard
     */
 
 public:
-    const static string aliases[6] = {"Standard", "Chess", "Classical", "Normal", "Illegal", "From Position"};
+    string aliases[6] = {"Standard", "Chess", "Classical", "Normal", "Illegal", "From Position"};
     string uci_variant = "chess";
     string xboard_variant = "normal";
     string starting_fen = STARTING_FEN;
@@ -1717,10 +1744,8 @@ public:
     manipulation.
     */
 
-    Board(string fen = STARTING_FEN, bool chess960 = false, ...)
+    Board(string fen = STARTING_FEN, bool chess960 = false, ...) : BaseBoard("")
     {
-        BaseBoard.__init__(self, None);
-
         this->chess960 = chess960;
 
         this->ep_square = -1;
@@ -1733,66 +1758,37 @@ public:
             this->set_fen(fen);
     }
 
+    LegalMoveGenerator *legal_moves() const
+    {
+        /*
+        A dynamic list of legal moves.
+
+        Wraps :func:`~chess::Board::generate_legal_moves()` and
+        :func:`~chess::Board::is_legal()`.
+        */
+        return new LegalMoveGenerator(this);
+    }
+
+    PseudoLegalMoveGenerator *pseudo_legal_moves() const
+    {
+        /*
+        A dynamic list of pseudo-legal moves, much like the legal move list.
+
+        Pseudo-legal moves might leave or put the king in check, but are
+        otherwise valid. Null moves are not pseudo-legal. Castling moves are
+        only included if they are completely legal.
+
+        Wraps :func:`~chess::Board::generate_pseudo_legal_moves()` and
+        :func:`~chess::Board::is_pseudo_legal()`.
+        */
+        return new PseudoLegalMoveGenerator(this);
+    }
+
 private:
     stack<_BoardState> _stack;
 };
 
-class _BoardState
-{
-
-public:
-    Bitboard pawns, knights, bishops, rooks, queens, kings, occupied_w, occupied_b, occupied, promoted;
-    Color turn;
-    Bitboard castling_rights;
-    int8_t ep_square;
-    uint8_t halfmove_clock;
-    uint16_t fullmove_number;
-
-    _BoardState(BoardT *board)
-    {
-        this->pawns = board->pawns;
-        this->knights = board->knights;
-        this->bishops = board->bishops;
-        this->rooks = board->rooks;
-        this->queens = board->queens;
-        this->kings = board->kings;
-
-        this->occupied_w = board->occupied_co[WHITE];
-        this->occupied_b = board->occupied_co[BLACK];
-        this->occupied = board->occupied;
-
-        this->promoted = board->promoted;
-
-        this->turn = board->turn;
-        this->castling_rights = board->castling_rights;
-        this->ep_square = board->ep_square;
-        this->halfmove_clock = board->halfmove_clock;
-        this->fullmove_number = board->fullmove_number;
-    }
-
-    void restore(BoardT *board) const
-    {
-        board->pawns = this->pawns;
-        board->knights = this->knights;
-        board->bishops = this->bishops;
-        board->rooks = this->rooks;
-        board->queens = this->queens;
-        board->kings = this->kings;
-
-        board->occupied_co[WHITE] = this->occupied_w;
-        board->occupied_co[BLACK] = this->occupied_b;
-        board->occupied = this->occupied;
-
-        board->promoted = this->promoted;
-
-        board->turn = this->turn;
-        board->castling_rights = this->castling_rights;
-        board->ep_square = this->ep_square;
-        board->halfmove_clock = this->halfmove_clock;
-        board->fullmove_number = this->fullmove_number;
-    }
-};
-
 int main()
 {
+    Board().pawns;
 }
