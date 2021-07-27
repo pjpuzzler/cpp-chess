@@ -14,12 +14,11 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <vector>
 #include <tuple>
 #include <regex>
-#include <deque>
 #include <functional>
 #include <optional>
-#include <stack>
 #include <sstream>
 #include <queue>
+#include <stack>
 
 #include <iostream>
 
@@ -31,7 +30,7 @@ typedef bool Color;
 const Color COLORS[] = {true, false}, WHITE = true, BLACK = false;
 const string COLOR_NAMES[] = {"black", "white"};
 
-typedef uint8_t PieceType;
+typedef int PieceType;
 const PieceType PIECE_TYPES[] = {1, 2, 3, 4, 5, 6}, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
 const optional<char> PIECE_SYMBOLS[] = {nullopt, 'p', 'n', 'b', 'r', 'q', 'k'};
 const optional<string> PIECE_NAMES[] = {nullopt, "pawn", "knight", "bishop", "rook", "queen", "king"};
@@ -161,7 +160,7 @@ public:
     }
 };
 
-typedef uint8_t Square;
+typedef int Square;
 const Square SQUARES[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63}, A1 = 0, B1 = 1, C1 = 2, D1 = 3, E1 = 4, F1 = 5, G1 = 6, H1 = 7, A2 = 8, B2 = 9, C2 = 10, D2 = 11, E2 = 12, F2 = 13, G2 = 14, H2 = 15, A3 = 16, B3 = 17, C3 = 18, D3 = 19, E3 = 20, F3 = 21, G3 = 22, H3 = 23, A4 = 24, B4 = 25, C4 = 26, D4 = 27, E4 = 28, F4 = 29, G4 = 30, H4 = 31, A5 = 32, B5 = 33, C5 = 34, D5 = 35, E5 = 36, F5 = 37, G5 = 38, H5 = 39, A6 = 40, B6 = 41, C6 = 42, D6 = 43, E6 = 44, F6 = 45, G6 = 46, H6 = 47, A7 = 48, B7 = 49, C7 = 50, D7 = 51, E7 = 52, F7 = 53, G7 = 54, H7 = 55, A8 = 56, B8 = 57, C8 = 58, D8 = 59, E8 = 60, F8 = 61, G8 = 62, H8 = 63;
 
 const string SQUARE_NAMES[] = {"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"};
@@ -186,25 +185,25 @@ string square_name(Square square)
     return SQUARE_NAMES[square];
 }
 
-Square square(uint8_t file_index, uint8_t rank_index)
+Square square(int file_index, int rank_index)
 {
     // Gets a square number by file and rank index.
     return rank_index * 8 + file_index;
 }
 
-uint8_t square_file(Square square)
+int square_file(Square square)
 {
     // Gets the file index of the square where ``0`` is the a-file.
     return square & 7;
 }
 
-uint8_t square_rank(Square square)
+int square_rank(Square square)
 {
     // Gets the rank index of the square where ``0`` is the first rank.
     return square >> 3;
 }
 
-uint8_t square_distance(Square a, Square b)
+int square_distance(Square a, Square b)
 {
     /*
     Gets the distance (i.e., the number of king steps) from square *a* to *b*.
@@ -238,7 +237,7 @@ const Bitboard BB_RANKS[] = {0xffUL << (8 * 0), 0xffUL << (8 * 1), 0xffUL << (8 
 
 const Bitboard BB_BACKRANKS = BB_RANK_1 | BB_RANK_8;
 
-uint8_t lsb(Bitboard bb)
+int lsb(Bitboard bb)
 {
     return bitset<32>(bb & -bb).size() - 1;
 }
@@ -255,7 +254,7 @@ vector<Square> scan_forward(Bitboard bb)
     return iter;
 }
 
-uint8_t msb(Bitboard bb)
+int msb(Bitboard bb)
 {
     return bitset<32>(bb).size() - 1;
 }
@@ -377,11 +376,11 @@ Bitboard shift_down_right(Bitboard b)
     return (b >> 7) & ~BB_FILE_A;
 }
 
-Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int8_t> deltas)
+Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int> deltas)
 {
     Bitboard attacks = BB_EMPTY;
 
-    for (int8_t delta : deltas)
+    for (int delta : deltas)
     {
         Square sq = square;
 
@@ -401,7 +400,7 @@ Bitboard _sliding_attacks(Square square, Bitboard occupied, vector<int8_t> delta
     return attacks;
 }
 
-Bitboard _step_attacks(Square square, vector<int8_t> deltas)
+Bitboard _step_attacks(Square square, vector<int> deltas)
 {
     return _sliding_attacks(square, BB_ALL, deltas);
 }
@@ -431,7 +430,7 @@ vector<Bitboard> _carry_rippler(Bitboard mask)
     return iter;
 }
 
-tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table(vector<int8_t> deltas)
+tuple<vector<Bitboard>, vector<unordered_map<Bitboard, Bitboard>>> _attack_table(vector<int> deltas)
 {
     vector<Bitboard> mask_table;
     vector<unordered_map<Bitboard, Bitboard>> attack_table;
@@ -458,11 +457,11 @@ const auto &[BB_RANK_MASKS, BB_RANK_ATTACKS] = _attack_table({-1, 1});
 vector<vector<Bitboard>> _rays()
 {
     vector<vector<Bitboard>> rays;
-    for (uint8_t a = 0; a < 64; ++a)
+    for (int a = 0; a < 64; ++a)
     {
         Bitboard bb_a = BB_SQUARES[a];
         vector<Bitboard> rays_row;
-        for (uint8_t b = 0; b < 64; ++b)
+        for (int b = 0; b < 64; ++b)
         {
             Bitboard bb_b = BB_SQUARES[b];
             if (BB_DIAG_ATTACKS[a].at(0) & bb_b)
@@ -947,7 +946,7 @@ public:
         ``rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR``).
         */
         vector<char> builder;
-        uint8_t empty = 0;
+        int empty = 0;
 
         for (Square square : SQUARES_180)
         {
@@ -1014,7 +1013,7 @@ public:
         this->_set_piece_map(pieces);
     }
 
-    void set_chess960_pos(uint16_t scharnagl)
+    void set_chess960_pos(int scharnagl)
     {
         /*
         Sets up a Chess960 starting position given its index between 0 and 959.
@@ -1023,7 +1022,7 @@ public:
         this->_set_chess960_pos(scharnagl);
     }
 
-    optional<uint16_t> chess960_pos()
+    optional<int> chess960_pos()
     {
         /*
         Gets the Chess960 starting position index between 0 and 959,
@@ -1051,22 +1050,22 @@ public:
         Bitboard x = this->bishops & (2 + 8 + 32 + 128);
         if (!x)
             return nullopt;
-        int8_t bs1 = (lsb(x) - 1) / 2;
-        int8_t cc_pos = bs1;
+        int bs1 = (lsb(x) - 1) / 2;
+        int cc_pos = bs1;
         x = this->bishops & (1 + 4 + 16 + 64);
         if (!x)
             return nullopt;
-        uint8_t bs2 = lsb(x) * 2;
+        int bs2 = lsb(x) * 2;
         cc_pos += bs2;
 
-        uint8_t q = 0;
+        int q = 0;
         bool qf = false;
-        uint8_t n0 = 0;
-        uint8_t n1 = 0;
+        int n0 = 0;
+        int n1 = 0;
         bool n0f = false;
         bool n1f = false;
-        uint8_t rf = 0;
-        vector<uint8_t> n0s = {0, 4, 7, 9};
+        int rf = 0;
+        vector<int> n0s = {0, 4, 7, 9};
         for (Square square = A1; square <= H1; ++square)
         {
             Bitboard bb = BB_SQUARES[square];
@@ -1105,7 +1104,7 @@ public:
         if (n0 < 4 && n1f && qf)
         {
             cc_pos += q * 16;
-            uint8_t krn = n0s[n0] + n1;
+            int krn = n0s[n0] + n1;
             cc_pos += krn * 96;
             return cc_pos;
         }
@@ -1272,7 +1271,7 @@ public:
         return &BaseBoardT(nullopt);
     }
 
-    static BaseBoardT *from_chess960_pos(uint16_t scharnagl)
+    static BaseBoardT *from_chess960_pos(int scharnagl)
     {
         /*
         Creates a new board, initialized with a Chess960 starting position.
@@ -1420,7 +1419,7 @@ protected:
         // Validate each row.
         for (string row : rows)
         {
-            uint8_t field_sum = 0;
+            int field_sum = 0;
             bool previous_was_digit = false;
             bool previous_was_piece = false;
 
@@ -1430,7 +1429,7 @@ protected:
                 {
                     if (previous_was_digit)
                         throw invalid_argument("two subsequent digits in position part of fen: " + fen);
-                    field_sum += uint8_t(c - '0');
+                    field_sum += int(c - '0');
                     previous_was_digit = true;
                     previous_was_piece = false;
                 }
@@ -1459,11 +1458,11 @@ protected:
         this->_clear_board();
 
         // Put pieces on the board.
-        uint8_t square_index = 0;
+        int square_index = 0;
         for (char c : fen)
         {
             if (c == '1' || c == '2' || c == '3' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8')
-                square_index += uint8_t(c);
+                square_index += int(c);
             else if (find(begin(PIECE_SYMBOLS), end(PIECE_SYMBOLS), tolower(c)) != end(PIECE_SYMBOLS))
             {
                 Piece *piece = Piece::from_symbol(c);
@@ -1482,20 +1481,20 @@ protected:
             this->_set_piece_at(square, piece->piece_type, piece->color);
     }
 
-    void _set_chess960_pos(uint16_t scharnagl)
+    void _set_chess960_pos(int scharnagl)
     {
         if (!(0 <= scharnagl && scharnagl <= 959))
             throw invalid_argument("chess960 position index not 0 <= " + to_string(scharnagl) + " <= 959");
 
         // See http://www.russellcottrell.com/Chess/Chess960.htm for
         // a description of the algorithm.
-        uint8_t n = scharnagl / 4, bw = scharnagl % 4;
-        uint8_t bb = n % 4;
+        int n = scharnagl / 4, bw = scharnagl % 4;
+        int bb = n % 4;
         n /= 4;
-        uint8_t q = n % 6;
+        int q = n % 6;
         n /= 6;
 
-        uint8_t n1, n2;
+        int n1, n2;
         for (n1 = 0; n1 < 4; ++n1)
         {
             n2 = n + (3 - n1) * (4 - n1) / 2 - 5;
@@ -1504,21 +1503,21 @@ protected:
         }
 
         // Bishops.
-        uint8_t bw_file = bw * 2 + 1;
-        uint8_t bb_file = bb * 2;
+        int bw_file = bw * 2 + 1;
+        int bb_file = bb * 2;
         this->bishops = (BB_FILES[bw_file] | BB_FILES[bb_file]) & BB_BACKRANKS;
 
         // Queens.
-        uint8_t q_file = q;
-        q_file += uint8_t(min(bw_file, bb_file) <= q_file);
-        q_file += uint8_t(max(bw_file, bb_file) <= q_file);
+        int q_file = q;
+        q_file += int(min(bw_file, bb_file) <= q_file);
+        q_file += int(max(bw_file, bb_file) <= q_file);
         this->queens = BB_FILES[q_file] & BB_BACKRANKS;
 
-        vector<uint8_t> used = {bw_file, bb_file, q_file};
+        vector<int> used = {bw_file, bb_file, q_file};
 
         // Knights.
         this->knights = BB_EMPTY;
-        for (uint8_t i = 0; i < 8; ++i)
+        for (int i = 0; i < 8; ++i)
         {
             if (find(used.begin(), used.end(), i) == used.end())
                 if (n1 == 0 || n2 == 0)
@@ -1531,7 +1530,7 @@ protected:
         }
 
         // RKR.
-        for (uint8_t i = 0; i < 8; ++i)
+        for (int i = 0; i < 8; ++i)
         {
             if (find(used.begin(), used.end(), i) == used.end())
             {
@@ -1540,7 +1539,7 @@ protected:
                 break;
             }
         }
-        for (uint8_t i = 1; i < 8; ++i)
+        for (int i = 1; i < 8; ++i)
         {
             if (find(used.begin(), used.end(), i) == used.end())
             {
@@ -1549,7 +1548,7 @@ protected:
                 break;
             }
         }
-        for (uint8_t i = 2; i < 8; ++i)
+        for (int i = 2; i < 8; ++i)
         {
             if (find(used.begin(), used.end(), i) == used.end())
             {
@@ -1577,8 +1576,8 @@ public:
     Color turn;
     Bitboard castling_rights;
     optional<Square> ep_square;
-    uint8_t halfmove_clock;
-    uint16_t fullmove_number;
+    int halfmove_clock;
+    int fullmove_number;
 
     _BoardState(BoardT *board) : pawns(board->pawns), knights(board->knights), bishops(board->bishops), rooks(board->rooks), queens(board->queens), kings(board->kings), occupied_w(board->occupied_co[WHITE]), occupied_b(board->occupied_co[BLACK]), occupied(board->occupied), promoted(board->promoted), turn(board->turn), castling_rights(board->castling_rights), ep_square(board->ep_square), halfmove_clock(board->halfmove_clock), fullmove_number(board->fullmove_number) {}
 
@@ -1678,13 +1677,13 @@ public:
     capturing would actually be possible on the next move.
     */
 
-    uint16_t fullmove_number;
+    int fullmove_number;
     /*
     Counts move pairs. Starts at `1` and is incremented after every move
     of the black side.
     */
 
-    uint8_t halfmove_clock;
+    int halfmove_clock;
     // The number of half-moves since the last capture or pawn move.
 
     Bitboard promoted;
@@ -1696,7 +1695,7 @@ public:
     represented as king moves to the corresponding rook square.
     */
 
-    deque<Move *> move_stack;
+    vector<Move *> move_stack;
     /*
     The move stack. Use :func:`Board::push() <chess::Board::push()>`,
     :func:`Board::pop() <chess::Board::pop()>`,
@@ -1809,7 +1808,7 @@ public:
             return this->copy(false);
     }
 
-    uint16_t ply()
+    int ply()
     {
         /*
         Returns the number of half-moves since the start of the game, as
@@ -2343,7 +2342,7 @@ public:
         be replayed because there is no incremental transposition table.
         */
         auto transposition_key = this->_transposition_key();
-        unordered_map<tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, optional<Square>>, uint8_t> transpositions;
+        unordered_map<tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, optional<Square>>, int> transpositions;
         ++transpositions[transposition_key];
 
         // Count positions.
@@ -2387,7 +2386,7 @@ public:
         return false;
     }
 
-    bool is_repetition(uint8_t count = 3)
+    bool is_repetition(int count = 3)
     {
         /*
         Checks if the current position has repeated 3 (or a given number of)
@@ -2402,7 +2401,7 @@ public:
         table.
         */
         // Fast check, based on occupancy only.
-        uint8_t maybe_repetitions = 1;
+        int maybe_repetitions = 1;
         for (auto it = this->_stack.rbegin(); it != this->_stack.rend(); ++it)
         {
             _BoardState *state = *it;
@@ -2529,7 +2528,7 @@ public:
         // Handle special pawn moves.
         if (piece_type == PAWN)
         {
-            int8_t diff = move->to_square - move->from_square;
+            int diff = move->to_square - move->from_square;
 
             if (diff == 16 && square_rank(move->from_square) == 1)
                 this->ep_square = move->from_square + 8;
@@ -2538,7 +2537,7 @@ public:
             else if (move->to_square == ep_square && (abs(diff) == 7 || abs(diff) == 9) && !captured_piece_type)
             {
                 // Remove pawns captured en passant.
-                int8_t down = this->turn == WHITE ? -8 : 8;
+                int down = this->turn == WHITE ? -8 : 8;
                 capture_square = *ep_square + down;
                 captured_piece_type = this->_remove_piece_at(capture_square);
             }
@@ -2665,12 +2664,12 @@ public:
             if (king == nullopt)
                 continue;
 
-            uint8_t king_file = square_file(*king);
+            int king_file = square_file(*king);
             Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
 
             for (Square rook_square : scan_reversed(this->clean_castling_rights() & backrank))
             {
-                uint8_t rook_file = square_file(rook_square);
+                int rook_file = square_file(rook_square);
                 bool a_side = rook_file < king_file;
 
                 Bitboard other_rooks = this->occupied_co[color] & this->rooks & backrank & ~BB_SQUARES[rook_square];
@@ -2832,7 +2831,7 @@ public:
 
         // Check that the half-move part is valid.
         string halfmove_part;
-        uint8_t halfmove_clock;
+        int halfmove_clock;
         try
         {
             halfmove_part = parts.front();
@@ -2858,7 +2857,7 @@ public:
         // Check that the full-move number part is valid.
         // 0 is allowed for compatibility, but later replaced with 1.
         string fullmove_part;
-        uint16_t fullmove_number;
+        int fullmove_number;
         try
         {
             fullmove_part = parts.front();
@@ -2876,7 +2875,7 @@ public:
             if (fullmove_number < 0)
                 throw invalid_argument("fullmove number cannot be negative: " + fen);
 
-            fullmove_number = max(int(fullmove_number), 1);
+            fullmove_number = max(fullmove_number, 1);
         }
         catch (invalid_argument)
         {
@@ -2899,10 +2898,82 @@ public:
         this->clear_stack();
     }
 
-private:
-    deque<_BoardState *> _stack;
+    void set_castling_fen(string castling_fen)
+    {
+        /*
+        Sets castling rights from a string in FEN notation like ``Qqk``.
 
-    bool _is_halfmoves(uint8_t n)
+        :raises: :exc:`std::invalid_argument` if the castling FEN is syntactically
+            invalid.
+        */
+        this->_set_castling_fen(castling_fen);
+        this->clear_stack();
+    }
+
+    void set_board_fen(string fen)
+    {
+        BaseBoard::set_board_fen(fen);
+        this->clear_stack();
+    }
+
+    void set_piece_map(unordered_map<Square, Piece *> pieces)
+    {
+        BaseBoard::set_piece_map(pieces);
+        this->clear_stack();
+    }
+
+    void set_chess960_pos(int scharnagl)
+    {
+        BaseBoard::set_chess960_pos(scharnagl);
+        this->chess960 = true;
+        this->turn = WHITE;
+        this->castling_rights = this->rooks;
+        this->ep_square = nullopt;
+        this->halfmove_clock = 0;
+        this->fullmove_number = 1;
+
+        this->clear_stack();
+    }
+
+    optional<int> chess960_pos(bool ignore_turn = false, bool ignore_castling = false, bool ignore_counters = true)
+    {
+        /*
+        Gets the Chess960 starting position index between 0 and 956,
+        or ``std::nullopt`` if the current position is not a Chess960 starting
+        position.
+
+        By default, white to move (**ignore_turn**) and full castling rights
+        (**ignore_castling**) are required, but move counters
+        (**ignore_counters**) are ignored.
+        */
+        if (this->ep_square)
+            return nullopt;
+
+        if (!ignore_turn)
+        {
+            if (this->turn != WHITE)
+                return nullopt;
+        }
+
+        if (!ignore_castling)
+        {
+            if (this->clean_castling_rights() != this->rooks)
+                return nullopt;
+        }
+
+        if (!ignore_counters)
+        {
+            if (this->fullmove_number != 1 || this->halfmove_clock != 0)
+                return nullopt;
+        }
+
+        return BaseBoard::chess960_pos();
+    }
+
+private:
+    vector<_BoardState *> _stack;
+
+    bool _is_halfmoves(int n)
     {
         return this->halfmove_clock >= n && !this->generate_legal_moves().empty();
     }
@@ -2913,6 +2984,54 @@ private:
     }
 
     void _push_capture(Move *move, Square capture_square, PieceType piece_type, bool was_promoted) {}
+
+    void _set_castling_fen(string castling_fen)
+    {
+        if (castling_fen.empty() || castling_fen == "-")
+        {
+            this->castling_rights = BB_EMPTY;
+            return;
+        }
+
+        if (!regex_match(castling_fen, FEN_CASTLING_REGEX))
+            throw invalid_argument("invalid castling fen: " + castling_fen);
+
+        this->castling_rights = BB_EMPTY;
+
+        for (char flag : castling_fen)
+        {
+            Color color = isupper(flag) ? WHITE : BLACK;
+            flag = tolower(flag);
+            Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
+            Bitboard rooks = this->occupied_co[color] & this->rooks & backrank;
+            optional<Square> king = this->king(color);
+
+            if (flag == 'q')
+            {
+                // Select the leftmost rook.
+                if (king != nullopt && lsb(rooks) < *king)
+                    this->castling_rights |= rooks & -rooks;
+                else
+                    this->castling_rights |= BB_FILE_A & backrank;
+            }
+            else if (flag == 'k')
+            {
+                // Select the rightmost rook.
+                int rook = msb(rooks);
+                if (king != nullopt && *king < rook)
+                    this->castling_rights |= BB_SQUARES[rook];
+                else
+                    this->castling_rights |= BB_FILE_H & backrank;
+            }
+            else
+            {
+                auto it = find(FILE_NAMES, FILE_NAMES + sizeof(FILE_NAMES) / sizeof(FILE_NAMES[0]), flag);
+                if (it == end(FILE_NAMES))
+                    throw invalid_argument("");
+                this->castling_rights |= BB_FILES[distance(FILE_NAMES, it)] & backrank;
+            }
+        }
+    }
 };
 
 int main()
