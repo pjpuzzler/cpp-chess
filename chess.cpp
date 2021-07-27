@@ -116,25 +116,25 @@ enum class Termination
 {
     // Enum with reasons for a game to be over.
 
-    CHECKMATE = 1,
+    CHECKMATE,
     // See :func:`chess::Board::is_checkmate()`.
-    STALEMATE = 2,
+    STALEMATE,
     // See :func:`chess::Board::is_stalemate()`.
-    INSUFFICIENT_MATERIAL = 3,
+    INSUFFICIENT_MATERIAL,
     // See :func:`chess::Board::is_insufficient_material()`.
-    SEVENTYFIVE_MOVES = 4,
+    SEVENTYFIVE_MOVES,
     // See :func:`chess::Board::is_seventyfive_moves()`.
-    FIVEFOLD_REPETITION = 5,
+    FIVEFOLD_REPETITION,
     // See :func:`chess::Board::is_fivefold_repetition()`.
-    FIFTY_MOVES = 6,
+    FIFTY_MOVES,
     // See :func:`chess::Board::can_claim_fifty_moves()`.
-    THREEFOLD_REPETITION = 7,
+    THREEFOLD_REPETITION,
     // See :func:`chess::Board::can_claim_threefold_repetition()`.
-    VARIANT_WIN = 8,
+    VARIANT_WIN,
     // See :func:`chess::Board::is_variant_win()`.
-    VARIANT_LOSS = 9,
+    VARIANT_LOSS,
     // See :func:`chess::Board::is_variant_loss()`.
-    VARIANT_DRAW = 10
+    VARIANT_DRAW
     // See :func:`chess::Board::is_variant_draw()`.
 };
 
@@ -530,11 +530,6 @@ public:
         return UNICODE_PIECE_SYMBOLS.at(symbol);
     }
 
-    operator string()
-    {
-        return to_string(this->symbol());
-    }
-
     static Piece *from_symbol(char symbol)
     {
         /*
@@ -546,6 +541,12 @@ public:
         if (it == end(PIECE_SYMBOLS))
             throw invalid_argument("symbol is invalid");
         return &Piece(distance(PIECE_SYMBOLS, it), toupper(symbol));
+    }
+
+private:
+    operator string()
+    {
+        return to_string(this->symbol());
     }
 };
 
@@ -596,16 +597,6 @@ public:
     string xboard()
     {
         return *this ? this->uci() : "@@@@";
-    }
-
-    operator bool()
-    {
-        return bool(this->from_square || this->to_square || this->promotion || this->drop);
-    }
-
-    operator string()
-    {
-        return this->uci();
     }
 
     static Move *from_uci(string uci)
@@ -667,6 +658,17 @@ public:
         boolean contexts.
         */
         return &Move(0, 0);
+    }
+
+private:
+    operator bool()
+    {
+        return bool(this->from_square || this->to_square || this->promotion || this->drop);
+    }
+
+    operator string()
+    {
+        return this->uci();
     }
 };
 
@@ -1173,19 +1175,6 @@ public:
         return string(builder.begin(), builder.end());
     }
 
-    bool operator==(BaseBoard &board)
-    {
-        return (
-            this->occupied == board.occupied &&
-            this->occupied_co[WHITE] == board.occupied_co[WHITE] &&
-            this->pawns == board.pawns &&
-            this->knights == board.knights &&
-            this->bishops == board.bishops &&
-            this->rooks == board.rooks &&
-            this->queens == board.queens &&
-            this->kings == board.kings);
-    }
-
     void apply_transform(function<Bitboard(Bitboard)> f)
     {
         this->pawns = f(this->pawns);
@@ -1564,6 +1553,20 @@ protected:
         this->occupied_co[BLACK] = BB_RANK_7 | BB_RANK_8;
         this->occupied = BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8;
         this->promoted = BB_EMPTY;
+    }
+
+private:
+    bool operator==(BaseBoard board)
+    {
+        return (
+            this->occupied == board.occupied &&
+            this->occupied_co[WHITE] == board.occupied_co[WHITE] &&
+            this->pawns == board.pawns &&
+            this->knights == board.knights &&
+            this->bishops == board.bishops &&
+            this->rooks == board.rooks &&
+            this->queens == board.queens &&
+            this->kings == board.kings);
     }
 };
 
@@ -3025,7 +3028,7 @@ public:
         Returns a dictionary of parsed operations. Values can be strings,
         integers, floats, move objects, or lists of moves.
 
-        :raises: :exc:`invalid_argument` if the EPD string is invalid.
+        :raises: :exc:`std::invalid_argument` if the EPD string is invalid.
         */
         auto it = epd.begin();
         auto it2 = epd.rbegin();
@@ -3093,32 +3096,755 @@ public:
         return this->_algebraic_and_push(move);
     }
 
-    // string variation_san(vector<Move*> variation) {
-    //     /*
-    //     Given a sequence of moves, returns a string representing the sequence
-    //     in standard algebraic notation (e.g., ``1. e4 e5 2. Nf3 Nc6`` or
-    //     ``37...Bg6 38. fxg6``).
+    string variation_san(vector<Move *> variation)
+    {
+        /*
+        Given a sequence of moves, returns a string representing the sequence
+        in standard algebraic notation (e.g., ``1. e4 e5 2. Nf3 Nc6`` or
+        ``37...Bg6 38. fxg6``).
 
-    //     The board will not be modified as a result of calling this.
+        The board will not be modified as a result of calling this.
 
-    //     :raises: :exc:`invalid_argument` if any moves in the sequence are illegal.
-    //     */
-    //     BaseBoardT* board = this->copy(false);
-    //     san = []
+        :raises: :exc:`std::invalid_argument` if any moves in the sequence are illegal.
+        */
+        BaseBoardT *board = this->copy(false);
+        vector<string> san = {};
 
-    //     for move in variation:
-    //         if not board.is_legal(move):
-    //             raise ValueError(f"illegal move {move} in position {board.fen()}")
+        for (Move *move : variation)
+        {
+            if (!board->is_legal(move))
+                throw invalid_argument("illegal move " + string(*move) + " in position " + board->fen());
 
-    //         if board.turn == WHITE:
-    //             san.append(f"{board.fullmove_number}. {board.san_and_push(move)}")
-    //         elif not san:
-    //             san.append(f"{board.fullmove_number}...{board.san_and_push(move)}")
-    //         else:
-    //             san.append(board.san_and_push(move))
+            if (board->turn == WHITE)
+                san.push_back(board->fullmove_number + ". " + board->san_and_push(move));
+            else if (san.empty())
+                san.push_back(board->fullmove_number + "..." + board->san_and_push(move));
+            else
+                san.push_back(board->san_and_push(move));
+        }
 
-    //     return " ".join(san);
-    // }
+        return string(san.begin(), san.end());
+    }
+
+    Move *parse_san(string san)
+    {
+        /*
+        Uses the current position as the context to parse a move in standard
+        algebraic notation and returns the corresponding move object.
+
+        Ambiguous moves are rejected. Overspecified moves (including long
+        algebraic notation) are accepted.
+
+        The returned move is guaranteed to be either legal or a null move.
+
+        :raises: :exc:`std::invalid_argument` if the SAN is invalid, illegal or ambiguous.
+        */
+        // Castling.
+        try
+        {
+            if (san == "O-O" || san == "O-O+" || san == "O-O#" || san == "0-0" || san == "0-0+" || san == "0-0#")
+            {
+                for (Move *move : this->generate_castling_moves())
+                {
+                    if (this->is_kingside_castling(move))
+                        return move;
+                }
+                throw out_of_range("");
+            }
+            else if (san == "O-O-O" || san == "O-O-O+" || san == "O-O-O#" || san == "0-0-0" || san == "0-0-0+" || san == "0-0-0#")
+            {
+                for (Move *move : this->generate_castling_moves())
+                {
+                    if (this->is_queenside_castling(move))
+                        return move;
+                }
+                throw out_of_range("");
+            }
+        }
+        catch (out_of_range)
+        {
+            throw invalid_argument("illegal san: '" + san + "' in" + this->fen());
+        }
+
+        // Match normal moves.
+        smatch match;
+        regex_search(san, match, SAN_REGEX);
+        if (match.empty())
+        {
+            // Null moves.
+            if (san == "--" || san == "Z0" || san == "0000" || san == "@@@@")
+                return Move::null();
+            else if (san.find(',') != string::npos)
+                throw invalid_argument("unsupported multi-leg move: " + san);
+            else
+                throw invalid_argument("invalid san: " + san);
+        }
+
+        // Get target square. Mask our own pieces to exclude castling moves.
+        auto it = find(SQUARE_NAMES, SQUARE_NAMES + sizeof(SQUARE_NAMES) / sizeof(SQUARE_NAMES[0]), match[4].str());
+        if (it == end(SQUARE_NAMES))
+            throw invalid_argument("");
+        Square to_square = distance(SQUARE_NAMES, it);
+        Bitboard to_mask = BB_SQUARES[to_square] & ~this->occupied_co[this->turn];
+
+        // Get the promotion piece type.
+        string p = match[5].str();
+        optional<PieceType> promotion;
+        if (!p.empty())
+        {
+            auto it = find(PIECE_SYMBOLS, PIECE_SYMBOLS + sizeof(PIECE_SYMBOLS) / sizeof(PIECE_SYMBOLS[0]), tolower(p.back()));
+            if (it == end(PIECE_SYMBOLS))
+                throw invalid_argument("");
+            promotion = distance(PIECE_SYMBOLS, it);
+        }
+        else
+            promotion = nullopt;
+
+        // Filter by original square.
+        int from_file;
+        Bitboard from_mask = BB_ALL;
+        if (!match[2].str().empty())
+        {
+            auto it = find(FILE_NAMES, FILE_NAMES + sizeof(FILE_NAMES) / sizeof(FILE_NAMES[0]), match[2].str());
+            if (it == end(FILE_NAMES))
+                throw invalid_argument("");
+            from_file = distance(FILE_NAMES, it);
+            from_mask &= BB_FILES[from_file];
+        }
+        int from_rank;
+        if (!match[3].str().empty())
+        {
+            from_rank = stoi(match[3].str()) - 1;
+            from_mask &= BB_RANKS[from_rank];
+        }
+
+        // Filter by piece type.
+        if (!match[1].str().empty())
+        {
+            auto it = find(PIECE_SYMBOLS, PIECE_SYMBOLS + sizeof(PIECE_SYMBOLS) / sizeof(PIECE_SYMBOLS[0]), tolower(match[1].str().front()));
+            if (it == end(PIECE_SYMBOLS))
+                throw invalid_argument("");
+            PieceType piece_type = distance(PIECE_SYMBOLS, it);
+            from_mask &= this->pieces_mask(piece_type, this->turn);
+        }
+        else if (!match[2].str().empty() && !match[3].str().empty())
+        {
+            // Allow fully specified moves, even if they are not pawn moves,
+            // including castling moves.
+            Move *move = this->find_move(square(from_file, from_rank), to_square, promotion);
+            if (!move->promotion && !promotion || *move->promotion == *promotion)
+                return move;
+            else
+                throw invalid_argument("missing promotion piece type: '" + san + "' in " + this->fen());
+        }
+        else
+            from_mask &= this->pawns;
+
+        // Match legal moves.
+        optional<Move *> matched_move = nullopt;
+        for (Move *move : this->generate_legal_moves(from_mask, to_mask))
+        {
+            if (bool(move->promotion) != bool(promotion) || *move->promotion != *promotion)
+                continue;
+
+            if (matched_move)
+                throw invalid_argument("ambiguous san: '" + san + "' in " + this->fen());
+
+            matched_move = move;
+        }
+
+        if (!matched_move)
+            throw invalid_argument("illegal san: '" + san + "' in " + this->fen());
+
+        return *matched_move;
+    }
+
+    Move *push_san(string san)
+    {
+        /*
+        Parses a move in standard algebraic notation, makes the move and puts
+        it onto the move stack.
+
+        Returns the move.
+
+        :raises: :exc:`std::invalid_argument` if neither legal nor a null move.
+        */
+        Move *move = this->parse_san(san);
+        this->push(move);
+        return move;
+    }
+
+    string uci(Move *move, optional<bool> chess960 = nullopt)
+    {
+        /*
+        Gets the UCI notation of the move.
+
+        *chess960* defaults to the mode of the board. Pass ``True`` to force
+        Chess960 mode.
+        */
+        if (chess960 == nullopt)
+            chess960 = this->chess960;
+
+        move = this->_to_chess960(move);
+        move = this->_from_chess960(chess960, move->from_square, move->to_square, move->promotion, move->drop);
+        return move->uci();
+    }
+
+    Move *parse_uci(string uci)
+    {
+        /*
+        Parses the given move in UCI notation.
+
+        Supports both Chess960 and standard UCI notation.
+
+        The returned move is guaranteed to be either legal or a null move.
+
+        :raises: :exc:`std::invalid_argument` if the move is invalid or illegal in the
+            current position (but not a null move).
+        */
+        Move *move = Move::from_uci(uci);
+
+        if (!*move)
+            return move;
+
+        move = this->_to_chess960(move);
+        move = this->_from_chess960(this->chess960, move->from_square, move->to_square, move->promotion, move->drop);
+
+        if (!this->is_legal(move))
+            throw invalid_argument("illegal uci: '" + uci + "' in " + this->fen());
+
+        return move;
+    }
+
+    Move *push_uci(string uci)
+    {
+        /*
+        Parses a move in UCI notation and puts it on the move stack.
+
+        Returns the move.
+
+        :raises: :exc:`std::invalid_argument` if the move is invalid or illegal in the
+            current position (but not a null move).
+        */
+        Move *move = this->parse_uci(uci);
+        this->push(move);
+        return move;
+    }
+
+    string xboard(Move *move, optional<bool> chess960 = nullopt)
+    {
+        if (chess960 == nullopt)
+            chess960 = this->chess960;
+
+        if (!*chess960 || !this->is_castling(move))
+            return move->xboard();
+        else if (this->is_kingside_castling(move))
+            return "O-O";
+        else
+            return "O-O-O";
+    }
+
+    Move *parse_xboard(string xboard)
+    {
+        return this->parse_san(xboard);
+    }
+
+    Move *push_xboard(string san)
+    {
+        /*
+        Parses a move in standard algebraic notation, makes the move and puts
+        it onto the move stack.
+
+        Returns the move.
+
+        :raises: :exc:`std::invalid_argument` if neither legal nor a null move.
+        */
+        Move *move = this->parse_san(san);
+        this->push(move);
+        return move;
+    }
+
+    bool is_en_passant(Move *move)
+    {
+        // Checks if the given pseudo-legal move is an en passant capture.
+        return (this->ep_square == move->to_square &&
+                bool(this->pawns & BB_SQUARES[move->from_square]) &&
+                (abs(move->to_square - move->from_square) == 7 || abs(move->to_square - move->from_square) == 9) &&
+                !(this->occupied & BB_SQUARES[move->to_square]));
+    }
+
+    bool is_capture(Move *move)
+    {
+        // Checks if the given pseudo-legal move is a capture.
+        Bitboard touched = BB_SQUARES[move->from_square] ^ BB_SQUARES[move->to_square];
+        return bool(touched & this->occupied_co[!this->turn]) || this->is_en_passant(move);
+    }
+
+    bool is_zeroing(Move *move)
+    {
+        // Checks if the given pseudo-legal move is a capture or pawn move.
+        Bitboard touched = BB_SQUARES[move->from_square] ^ BB_SQUARES[move->to_square];
+        return bool(touched & this->pawns || touched & this->occupied_co[!this->turn] || move->drop == PAWN);
+    }
+
+    bool is_irreversible(Move *move)
+    {
+        /*
+        Checks if the given pseudo-legal move is irreversible.
+
+        In standard chess, pawn moves, captures, moves that destroy castling
+        rights and moves that cede en passant are irreversible.
+
+        This method has false-negatives with forced lines. For example, a check
+        that will force the king to lose castling rights is not considered
+        irreversible. Only the actual king move is.
+        */
+        return this->is_zeroing(move) || this->_reduces_castling_rights(move) || this->has_legal_en_passant();
+    }
+
+    bool is_castling(Move *move)
+    {
+        // Checks if the given pseudo-legal move is a castling move.
+        if (this->kings & BB_SQUARES[move->from_square])
+        {
+            int diff = square_file(move->from_square) - square_file(move->to_square);
+            return abs(diff) > 1 || bool(this->rooks & this->occupied_co[this->turn] & BB_SQUARES[move->to_square]);
+        }
+        return false;
+    }
+
+    bool is_kingside_castling(Move *move)
+    {
+        /*
+        Checks if the given pseudo-legal move is a kingside castling move.
+        */
+        return this->is_castling(move) && square_file(move->to_square) > square_file(move->from_square);
+    }
+
+    bool is_queenside_castling(Move *move)
+    {
+        /*
+        Checks if the given pseudo-legal move is a queenside castling move.
+        */
+        return this->is_castling(move) && square_file(move->to_square) < square_file(move->from_square);
+    }
+
+    Bitboard clean_castling_rights()
+    {
+        /*
+        Returns valid castling rights filtered from
+        :data:`~chess::Board::castling_rights`.
+        */
+        if (!this->_stack.empty())
+            // No new castling rights are assigned in a game, so we can assume
+            // they were filtered already.
+            return this->castling_rights;
+
+        Bitboard castling = this->castling_rights & this->rooks;
+        Bitboard white_castling = castling & BB_RANK_1 & this->occupied_co[WHITE];
+        Bitboard black_castling = castling & BB_RANK_8 & this->occupied_co[BLACK];
+
+        if (!this->chess960)
+        {
+            // The rooks must be on a1, h1, a8 or h8.
+            white_castling &= (BB_A1 | BB_H1);
+            black_castling &= (BB_A8 | BB_H8);
+
+            // The kings must be on e1 or e8.
+            if (!(this->occupied_co[WHITE] & this->kings & ~this->promoted & BB_E1))
+                white_castling = 0;
+            if (!(this->occupied_co[BLACK] & this->kings & ~this->promoted & BB_E8))
+                black_castling = 0;
+
+            return white_castling | black_castling;
+        }
+        else
+        {
+            // The kings must be on the back rank.
+            Bitboard white_king_mask = this->occupied_co[WHITE] & this->kings & BB_RANK_1 & ~this->promoted;
+            Bitboard black_king_mask = this->occupied_co[BLACK] & this->kings & BB_RANK_8 & ~this->promoted;
+            if (!white_king_mask)
+                white_castling = 0;
+            if (!black_king_mask)
+                black_castling = 0;
+
+            // There are only two ways of castling, a-side and h-side, and the
+            // king must be between the rooks.
+            Bitboard white_a_side = white_castling & -white_castling;
+            Bitboard white_h_side = white_castling ? BB_SQUARES[msb(white_castling)] : 0;
+
+            if (white_a_side && msb(white_a_side) > msb(white_king_mask))
+                white_a_side = 0;
+            if (white_h_side && msb(white_h_side) < msb(white_king_mask))
+                white_h_side = 0;
+
+            Bitboard black_a_side = (black_castling & -black_castling);
+            Bitboard black_h_side = black_castling ? BB_SQUARES[msb(black_castling)] : BB_EMPTY;
+
+            if (black_a_side && msb(black_a_side) > msb(black_king_mask))
+                black_a_side = 0;
+            if (black_h_side && msb(black_h_side) < msb(black_king_mask))
+                black_h_side = 0;
+
+            // Done.
+            return black_a_side | black_h_side | white_a_side | white_h_side;
+        }
+    }
+
+    bool has_castling_rights(Color color)
+    {
+        // Checks if the given side has castling rights.
+        Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
+        return bool(this->clean_castling_rights() & backrank);
+    }
+
+    bool has_kingside_castling_rights(Color color)
+    {
+        /*
+        Checks if the given side has kingside (that is h-side in Chess960)
+        castling rights.
+        */
+        Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
+        Bitboard king_mask = this->kings & this->occupied_co[color] & backrank & ~this->promoted;
+        if (!king_mask)
+            return false;
+
+        Bitboard castling_rights = this->clean_castling_rights() & backrank;
+        while (castling_rights)
+        {
+            Bitboard rook = castling_rights & -castling_rights;
+
+            if (rook > king_mask)
+                return true;
+
+            castling_rights = castling_rights & (castling_rights - 1);
+        }
+
+        return false;
+    }
+
+    bool has_queenside_castling_rights(Color color)
+    {
+        /*
+        Checks if the given side has queenside (that is h-side in Chess960)
+        castling rights.
+        */
+        Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
+        Bitboard king_mask = this->kings & this->occupied_co[color] & backrank & ~this->promoted;
+        if (!king_mask)
+            return false;
+
+        Bitboard castling_rights = this->clean_castling_rights() & backrank;
+        while (castling_rights)
+        {
+            Bitboard rook = castling_rights & -castling_rights;
+
+            if (rook < king_mask)
+                return true;
+
+            castling_rights = castling_rights & (castling_rights - 1);
+        }
+
+        return false;
+    }
+
+    bool has_chess960_castling_rights()
+    {
+        /*
+        Checks if there are castling rights that are only possible in Chess960.
+        */
+        // Get valid Chess960 castling rights.
+        bool chess960 = this->chess960;
+        this->chess960 = true;
+        castling_rights = this->clean_castling_rights();
+        this->chess960 = chess960;
+
+        // Standard chess castling rights can only be on the standard
+        // starting rook squares.
+        if (castling_rights & ~BB_CORNERS)
+            return true;
+
+        // If there are any castling rights in standard chess, the king must be
+        // on e1 or e8.
+        if (castling_rights & BB_RANK_1 && !(this->occupied_co[WHITE] & this->kings & BB_E1))
+            return true;
+        if (castling_rights & BB_RANK_8 && !(this->occupied_co[BLACK] & this->kings & BB_E8))
+            return true;
+
+        return false;
+    }
+
+    Status status()
+    {
+        /*
+        Gets a bitmask of possible problems with the position.
+
+        :data:`~chess::STATUS_VALID` if all basic validity requirements are met.
+        This does not imply that the position is actually reachable with a
+        series of legal moves from the starting position.
+
+        Otherwise, bitwise combinations of:
+        :data:`~chess::STATUS_NO_WHITE_KING`,
+        :data:`~chess::STATUS_NO_BLACK_KING`,
+        :data:`~chess::STATUS_TOO_MANY_KINGS`,
+        :data:`~chess::STATUS_TOO_MANY_WHITE_PAWNS`,
+        :data:`~chess::STATUS_TOO_MANY_BLACK_PAWNS`,
+        :data:`~chess::STATUS_PAWNS_ON_BACKRANK`,
+        :data:`~chess::STATUS_TOO_MANY_WHITE_PIECES`,
+        :data:`~chess::STATUS_TOO_MANY_BLACK_PIECES`,
+        :data:`~chess::STATUS_BAD_CASTLING_RIGHTS`,
+        :data:`~chess::STATUS_INVALID_EP_SQUARE`,
+        :data:`~chess::STATUS_OPPOSITE_CHECK`,
+        :data:`~chess::STATUS_EMPTY`,
+        :data:`~chess::STATUS_RACE_CHECK`,
+        :data:`~chess::STATUS_RACE_OVER`,
+        :data:`~chess::STATUS_RACE_MATERIAL`,
+        :data:`~chess::STATUS_TOO_MANY_CHECKERS`,
+        :data:`~chess::STATUS_IMPOSSIBLE_CHECK`.
+        */
+        int errors = int(STATUS_VALID);
+
+        // There must be at least one piece.
+        if (!this->occupied)
+            errors |= int(STATUS_EMPTY);
+
+        // There must be exactly one king of each color.
+        if (!(this->occupied_co[WHITE] & this->kings))
+            errors |= int(STATUS_NO_WHITE_KING);
+        if (!(this->occupied_co[BLACK] & this->kings))
+            errors |= int(STATUS_NO_BLACK_KING);
+        if (std::popcount(this->occupied & this->kings) > 2)
+            errors |= int(STATUS_TOO_MANY_KINGS);
+
+        // There can not be more than 16 pieces of any color.
+        if (std::popcount(this->occupied_co[WHITE]) > 16)
+            errors |= int(STATUS_TOO_MANY_WHITE_PIECES);
+        if (std::popcount(this->occupied_co[BLACK]) > 16)
+            errors |= int(STATUS_TOO_MANY_BLACK_PIECES);
+
+        // There can not be more than 8 pawns of any color.
+        if (std::popcount(this->occupied_co[WHITE] & this->pawns) > 8)
+            errors |= int(STATUS_TOO_MANY_WHITE_PAWNS);
+        if (std::popcount(this->occupied_co[BLACK] & this->pawns) > 8)
+            errors |= int(STATUS_TOO_MANY_BLACK_PAWNS);
+
+        // Pawns can not be on the back rank.
+        if (this->pawns & BB_BACKRANKS)
+            errors |= int(STATUS_PAWNS_ON_BACKRANK);
+
+        // Castling rights.
+        if (this->castling_rights != this->clean_castling_rights())
+            errors |= int(STATUS_BAD_CASTLING_RIGHTS);
+
+        // En passant.
+        optional<Square> valid_ep_square = this->_valid_ep_square();
+        if (bool(this->ep_square) != bool(valid_ep_square) || *this->ep_square != *valid_ep_square)
+            errors |= int(STATUS_INVALID_EP_SQUARE);
+
+        // Side to move giving check.
+        if (this->was_into_check())
+            errors |= int(STATUS_OPPOSITE_CHECK);
+
+        // More than the maximum number of possible checkers in the variant.
+        Bitboard checkers = this->checkers_mask();
+        Bitboard our_kings = this->kings & this->occupied_co[this->turn] & ~this->promoted;
+        if (std::popcount(checkers) > 2)
+            errors |= int(STATUS_TOO_MANY_CHECKERS);
+        else if (std::popcount(checkers) == 2 && ray(lsb(checkers), msb(checkers)) & our_kings)
+            errors |= int(STATUS_IMPOSSIBLE_CHECK);
+        else if (valid_ep_square != nullopt)
+        {
+            for (Square checker : scan_reversed(checkers))
+            {
+                if (ray(checker, *valid_ep_square) & our_kings)
+                {
+                    errors |= int(STATUS_IMPOSSIBLE_CHECK);
+                    break;
+                }
+            }
+        }
+
+        return Status(errors);
+    }
+
+    bool is_valid()
+    {
+        /*
+        Checks some basic validity requirements.
+
+        See :func:`~chess.Board.status()` for details.
+        */
+        return this->status() == STATUS_VALID;
+    }
+
+    vector<Move *> generate_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL)
+    {
+        vector<Move *> iter;
+        if (this->is_variant_end())
+            return iter;
+
+        Bitboard king_mask = this->kings & this->occupied_co[this->turn];
+        if (king_mask)
+        {
+            Square king = msb(king_mask);
+            Bitboard blockers = this->_slider_blockers(king);
+            Bitboard checkers = this->attackers_mask(!this->turn, king);
+            if (checkers)
+            {
+                for (Move *move : this->_generate_evasions(king, checkers, from_mask, to_mask))
+                {
+                    if (this->_is_safe(king, blockers, move))
+                        iter.push_back(move);
+                    else
+                    {
+                        for (Move *move : this->generate_pseudo_legal_moves(from_mask, to_mask))
+                        {
+                            if (this->_is_safe(king, blockers, move))
+                                iter.push_back(move);
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (Move *move : this->generate_pseudo_legal_moves(from_mask, to_mask))
+                iter.push_back(move);
+        }
+        return iter;
+    }
+
+    vector<Move *> generate_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL)
+    {
+        vector<Move *> iter;
+        if (this->is_variant_end())
+            return iter;
+
+        for (Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
+        {
+            if (!this->is_into_check(move))
+                iter.push_back(move);
+        }
+        return iter;
+    }
+
+    vector<Move *> generate_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL)
+    {
+        vector<Move *> iter;
+        for (Move *move : this->generate_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn]))
+            iter.push_back(move);
+        for (Move *move : this->generate_legal_ep(from_mask, to_mask))
+            iter.push_back(move);
+        return iter;
+    }
+
+    vector<Move *> generate_castling_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL)
+    {
+        vector<Move *> iter;
+        if (this->is_variant_end())
+            return iter;
+
+        Bitboard backrank = this->turn == WHITE ? BB_RANK_1 : BB_RANK_8;
+        Bitboard king = this->occupied_co[this->turn] & this->kings & ~this->promoted & backrank & from_mask;
+        king = king & -king;
+        if (!king)
+            return iter;
+
+        Bitboard bb_c = BB_FILE_C & backrank;
+        Bitboard bb_d = BB_FILE_D & backrank;
+        Bitboard bb_f = BB_FILE_F & backrank;
+        Bitboard bb_g = BB_FILE_G & backrank;
+
+        for (Square candidate : scan_reversed(this->clean_castling_rights() & backrank & to_mask))
+        {
+            Bitboard rook = BB_SQUARES[candidate];
+
+            bool a_side = rook < king;
+            Bitboard king_to = a_side ? bb_c : bb_g;
+            Bitboard rook_to = a_side ? bb_d : bb_f;
+
+            Bitboard king_path = between(msb(king), msb(king_to));
+            Bitboard rook_path = between(candidate, msb(rook_to));
+
+            if (!((this->occupied ^ king ^ rook) & (king_path | rook_path | king_to | rook_to) ||
+                  this->_attacked_for_king(king_path | king, this->occupied ^ king) ||
+                  this->_attacked_for_king(king_to, this->occupied ^ king ^ rook ^ rook_to)))
+                iter.push_back(this->_from_chess960(this->chess960, msb(king), candidate));
+        }
+        return iter;
+    }
+
+    void apply_transform(function<Bitboard(Bitboard)> f)
+    {
+        BaseBoard::apply_transform(f);
+        this->clear_stack();
+        this->ep_square = this->ep_square == nullopt ? nullopt : optional(msb(f(BB_SQUARES[*this->ep_square])));
+        this->castling_rights = f(this->castling_rights);
+    }
+
+    BoardT *transform(function<Bitboard(Bitboard)> f)
+    {
+        BoardT *board = this->copy(false);
+        board->apply_transform(f);
+        return board;
+    }
+
+    void apply_mirror()
+    {
+        BaseBoard::apply_mirror();
+        this->turn = !this->turn;
+    }
+
+    BoardT *mirror()
+    {
+        /*
+        Returns a mirrored copy of the board.
+
+        The board is mirrored vertically and piece colors are swapped, so that
+        the position is equivalent modulo color. Also swap the "en passant"
+        square, castling rights and turn.
+
+        Alternatively, :func:`~chess::Board::apply_mirror()` can be used
+        to mirror the board.
+        */
+        BoardT *board = this->copy();
+        board->apply_mirror();
+        return board;
+    }
+
+    BoardT *copy(variant<bool, int> stack = true)
+    {
+        /*
+        Creates a copy of the board.
+
+        Defaults to copying the entire move stack. Alternatively, *stack* can
+        be ``false``, or an integer to copy a limited number of moves.
+        */
+        BoardT *board = BaseBoard::copy();
+
+        board->chess960 = this->chess960;
+
+        board->ep_square = this->ep_square;
+        board->castling_rights = this->castling_rights;
+        board->turn = this->turn;
+        board->fullmove_number = this->fullmove_number;
+        board->halfmove_clock = this->halfmove_clock;
+
+        if (holds_alternative<bool>(stack) && get<bool>(stack) || holds_alternative<int>(stack) && get<int>(stack))
+        {
+            stack = int(holds_alternative<bool>(stack) && get<bool>(stack) == true ? this->move_stack.size() : get<int>(stack));
+            vector<Move *> move_stack;
+            for (auto it = this->move_stack.end() - get<int>(stack); it != this->move_stack.end(); ++it)
+            {
+                Move copy = **it;
+                move_stack.push_back(&copy);
+            }
+            board->move_stack = move_stack;
+            board->_stack = vector<Move *>(this->_stack.end() - get<int>(stack), this->_stack.end());
+        }
+
+        return board;
+    }
 
 private:
     vector<_BoardState *> _stack;
@@ -3561,6 +4287,233 @@ private:
             san += "=" + toupper(piece_symbol(move->promotion));
 
         return san;
+    }
+
+    bool _reduces_castling_rights(Move *move)
+    {
+        Bitboard cr = this->clean_castling_rights();
+        Bitboard touched = BB_SQUARES[move->from_square] ^ BB_SQUARES[move->to_square];
+        return bool(touched & cr ||
+                    cr & BB_RANK_1 && touched & this->kings & this->occupied_co[WHITE] & ~this->promoted ||
+                    cr & BB_RANK_8 && touched & this->kings & this->occupied_co[BLACK] & ~this->promoted);
+    }
+
+    optional<Square> _valid_ep_square()
+    {
+        if (!this->ep_square)
+            return nullopt;
+
+        int ep_rank;
+        Bitboard pawn_mask, seventh_rank_mask;
+        if (this->turn == WHITE)
+        {
+            ep_rank = 5;
+            pawn_mask = shift_down(BB_SQUARES[*this->ep_square]);
+            seventh_rank_mask = shift_up(BB_SQUARES[*this->ep_square]);
+        }
+        else
+        {
+            ep_rank = 2;
+            pawn_mask = shift_up(BB_SQUARES[*this->ep_square]);
+            seventh_rank_mask = shift_down(BB_SQUARES[*this->ep_square]);
+        }
+
+        // The en passant square must be on the third or sixth rank.
+        if (square_rank(*this->ep_square) != ep_rank)
+            return nullopt;
+
+        // The last move must have been a double pawn push, so there must
+        // be a pawn of the correct color on the fourth or fifth rank.
+        if (!(this->pawns & this->occupied_co[!this->turn] & pawn_mask))
+            return nullopt;
+
+        // And the en passant square must be empty.
+        if (this->occupied & BB_SQUARES[*this->ep_square])
+            return nullopt;
+
+        // And the second rank must be empty.
+        if (this->occupied & seventh_rank_mask)
+            return nullopt;
+
+        return this->ep_square;
+    }
+
+    bool _ep_skewered(Square king, Square capturer)
+    {
+        // Handle the special case where the king would be in check if the
+        // pawn and its capturer disappear from the rank.
+
+        // Vertical skewers of the captured pawn are not possible. (Pins on
+        // the capturer are not handled here.)
+        if (this->ep_square == nullopt)
+            throw;
+
+        Square last_double = *this->ep_square + (this->turn == WHITE ? -8 : 8);
+
+        Bitboard occupancy = (this->occupied & ~BB_SQUARES[last_double] &
+                                  ~BB_SQUARES[capturer] |
+                              BB_SQUARES[*this->ep_square]);
+
+        // Horizontal attack on the fifth or fourth rank.
+        Bitboard horizontal_attackers = this->occupied_co[!this->turn] & (this->rooks | this->queens);
+        if (BB_RANK_ATTACKS[king].at(BB_RANK_MASKS[king] & occupancy) & horizontal_attackers)
+            return true;
+
+        // Diagonal skewers. These are not actually possible in a real game,
+        // because if the latest double pawn move covers a diagonal attack,
+        // then the other side would have been in check already.
+        Bitboard diagonal_attackers = this->occupied_co[!this->turn] & (this->bishops | this->queens);
+        if (BB_DIAG_ATTACKS[king].at(BB_DIAG_MASKS[king] & occupancy) & diagonal_attackers)
+            return true;
+
+        return false;
+    }
+
+    Bitboard _slider_blockers(Square king)
+    {
+        Bitboard rooks_and_queens = this->rooks | this->queens;
+        Bitboard bishops_and_queens = this->bishops | this->queens;
+
+        Bitboard snipers = ((BB_RANK_ATTACKS[king].at(0) & rooks_and_queens) |
+                            (BB_FILE_ATTACKS[king].at(0) & rooks_and_queens) |
+                            (BB_DIAG_ATTACKS[king].at(0) & bishops_and_queens));
+
+        Bitboard blockers = 0;
+
+        for (Square sniper : scan_reversed(snipers & this->occupied_co[!this->turn]))
+        {
+            Bitboard b = between(king, sniper) & this->occupied;
+
+            // Add to blockers if exactly one piece in-between.
+            if (b && BB_SQUARES[msb(b)] == b)
+                blockers |= b;
+        }
+
+        return blockers & this->occupied_co[this->turn];
+    }
+
+    bool _is_safe(Square king, Bitboard blockers, Move *move)
+    {
+        if (move->from_square == king)
+        {
+            if (this->is_castling(move))
+                return true;
+            else
+                return !this->is_attacked_by(!this->turn, move->to_square);
+        }
+        else if (this->is_en_passant(move))
+            return bool(this->pin_mask(this->turn, move->from_square) & BB_SQUARES[move->to_square] &&
+                        !this->_ep_skewered(king, move->from_square));
+        else
+            return bool(!blockers & BB_SQUARES[move->from_square] ||
+                        ray(move->from_square, move->to_square) & BB_SQUARES[king]);
+    }
+
+    vector<Move *> _generate_evasions(Square king, Bitboard checkers, Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL)
+    {
+        vector<Move *> iter;
+        Bitboard sliders = checkers & (this->bishops | this->rooks | this->queens);
+
+        Bitboard attacked = 0;
+        for (Square checker : scan_reversed(sliders))
+            attacked |= ray(king, checker) & ~BB_SQUARES[checker];
+
+        if (BB_SQUARES[king] & from_mask)
+        {
+            for (Square to_square : scan_reversed(BB_KING_ATTACKS[king] & ~this->occupied_co[this->turn] & ~attacked & to_mask))
+                iter.push_back(&Move(king, to_square));
+        }
+
+        Square checker = msb(checkers);
+        if (BB_SQUARES[checker] == checkers)
+        {
+            // Capture or block a single checker.
+            Bitboard target = between(king, checker) | checkers;
+
+            for (Move *move : this->generate_pseudo_legal_moves(~this->kings & from_mask, target & to_mask))
+                iter.push_back(move);
+
+            // Capture the checking pawn en passant (but avoid yielding
+            // duplicate moves).
+            if (this->ep_square && !(BB_SQUARES[*this->ep_square] & target))
+            {
+                Square last_double = *this->ep_square + (this->turn == WHITE ? -8 : 8);
+                if (last_double == checker)
+                {
+                    for (Move *move : this->generate_pseudo_legal_ep(from_mask, to_mask))
+                        iter.push_back(move);
+                }
+            }
+        }
+        return iter;
+    }
+
+    bool _attacked_for_king(Bitboard path, Bitboard occupied)
+    {
+        for (Square sq : scan_reversed(path))
+            if (this->_attackers_mask(!this->turn, sq, occupied))
+                return true;
+        return false;
+    }
+
+    Move *_from_chess960(bool chess960, Square from_square, Square to_square, optional<PieceType> promotion = nullopt, optional<PieceType> drop = nullopt)
+    {
+        if (!chess960 && promotion == nullopt && drop == nullopt)
+        {
+            if (from_square == E1 && this->kings & BB_E1)
+            {
+                if (to_square == H1)
+                    return &Move(E1, G1);
+                else if (to_square == A1)
+                    return &Move(E1, C1);
+            }
+            else if (from_square == E8 && this->kings & BB_E8)
+            {
+                if (to_square == H8)
+                    return &Move(E8, G8);
+                else if (to_square == A8)
+                    return &Move(E8, C8);
+            }
+        }
+
+        return &Move(from_square, to_square, promotion, drop);
+    }
+
+    Move *_to_chess960(Move *move)
+    {
+        if (move->from_square == E1 && this->kings & BB_E1)
+        {
+            if (move->to_square == G1 && !(this->rooks & BB_G1))
+                return &Move(E1, H1);
+            else if (move->to_square == C1 && !(this->rooks & BB_C1))
+                return &Move(E1, A1);
+        }
+        else if (move->from_square == E8 && this->kings & BB_E8)
+        {
+            if (move->to_square == G8 && !(this->rooks & BB_G8))
+                return &Move(E8, H8);
+            else if (move->to_square == C8 && !(this->rooks & BB_C8))
+                return &Move(E8, A8);
+        }
+
+        return move;
+    }
+
+    tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, optional<Square>> _transposition_key()
+    {
+        return {this->pawns, this->knights, this->bishops, this->rooks,
+                this->queens, this->kings,
+                this->occupied_co[WHITE], this->occupied_co[BLACK],
+                this->turn, this->clean_castling_rights(),
+                this->has_legal_en_passant() ? this->ep_square : nullopt};
+    }
+
+    bool operator==(Board board)
+    {
+        return (
+            this->halfmove_clock == board.halfmove_clock &&
+            this->fullmove_number == board.fullmove_number &&
+            this->_transposition_key() == board._transposition_key());
     }
 };
 
