@@ -19,6 +19,7 @@ The original version can be found here: https://github.com/niklasf/python-chess
 #include <sstream>
 #include <queue>
 #include <stack>
+#include <variant>
 
 #include <iostream>
 
@@ -2970,6 +2971,155 @@ public:
         return BaseBoard::chess960_pos();
     }
 
+    string epd(bool shredder = false, _EnPassantSpec en_passant = "legal", optional<bool> promoted = nullopt, unordered_map<string, optional<variant<string, int, float, Move *, vector<Move *>>>> operations = {})
+    {
+        /*
+        Gets an EPD representation of the current position.
+
+        See :func:`~chess::Board::fen()` for FEN formatting options (*shredder*,
+        *ep_square* and *promoted*).
+
+        Supported operands for EPD operations
+        are strings, integers, finite floats, legal moves and ``std::nullopt``.
+        Additionally, the operation ``pv`` accepts a legal variation as
+        a list of moves. The operations ``am`` and ``bm`` accept a list of
+        legal moves in the current position.
+
+        The name of the field cannot be a lone dash and cannot contain spaces,
+        newlines, carriage returns or tabs.
+        */
+        optional<Square> ep_square;
+        if (en_passant == "fen")
+            ep_square = this->ep_square;
+        else if (en_passant == "xfen")
+            ep_square = this->has_pseudo_legal_en_passant() ? this->ep_square : nullopt;
+        else
+            ep_square = this->has_legal_en_passant() ? this->ep_square : nullopt;
+
+        vector<string> epd = {this->board_fen(promoted),
+                              this->turn == WHITE ? "w" : "b",
+                              shredder ? this->castling_shredder_fen() : this->castling_xfen(),
+                              ep_square != nullopt ? SQUARE_NAMES[*ep_square] : "-"};
+
+        if (!operations.empty())
+            epd.push_back(this->_epd_operations(operations));
+
+        string s;
+        for (int i = 0; i < epd.size(); ++i)
+        {
+            s += epd[i];
+            if (i < epd.size() - 1)
+                s += " ";
+        }
+        return s;
+    }
+
+    unordered_map<string, optional<variant<string, int, float, Move *, vector<Move *>>>> set_epd(string epd)
+    {
+        /*
+        Parses the given EPD string and uses it to set the position.
+
+        If present, ``hmvc`` and ``fmvn`` are used to set the half-move
+        clock and the full-move number. Otherwise, ``0`` and ``1`` are used.
+
+        Returns a dictionary of parsed operations. Values can be strings,
+        integers, floats, move objects, or lists of moves.
+
+        :raises: :exc:`invalid_argument` if the EPD string is invalid.
+        */
+        auto it = epd.begin();
+        auto it2 = epd.rbegin();
+        while (isspace(*it))
+            ++it;
+        while (isspace(*it2) || *it2 == ';')
+            ++it2;
+        vector<string> parts;
+        stringstream ss(string(it, it2.base()));
+        string s;
+        for (int i = 0; getline(ss, s, ' ') && i < 4; ++i)
+            parts.push_back(s);
+
+        // Parse ops.
+        if (parts.size() > 4)
+        {
+            string joined;
+            for (int i = 0; i < parts.size() - 1; ++i)
+            {
+                joined += parts[i];
+                if (i < parts.size() - 2)
+                    joined += " ";
+            }
+            auto operations = this->_parse_epd_ops(parts.back(), [&]() -> Board * { return &Board(joined + " 0 1"); });
+            parts.pop_back();
+            parts.push_back(operations.find("hmvc") != operations.end() ? get<string>(*operations["hmvc"]) : "0");
+            parts.push_back(operations.find("fmvn") != operations.end() ? get<string>(*operations["fmvn"]) : "1");
+            joined = "";
+            for (int i = 0; i < parts.size(); ++i)
+            {
+                joined += parts[i];
+                if (i < parts.size() - 1)
+                    joined += " ";
+            }
+            this->set_fen(joined);
+            return operations;
+        }
+        else
+        {
+            this->set_fen(epd);
+            return {};
+        }
+    }
+
+    string san(Move *move)
+    {
+        /*
+        Gets the standard algebraic notation of the given move in the context
+        of the current position.
+        */
+        return this->_algebraic(move);
+    }
+
+    string lan(Move *move)
+    {
+        /*
+        Gets the long algebraic notation of the given move in the context of
+        the current position.
+        */
+        return this->_algebraic(move, true);
+    }
+
+    string san_and_push(Move *move)
+    {
+        return this->_algebraic_and_push(move);
+    }
+
+    // string variation_san(vector<Move*> variation) {
+    //     /*
+    //     Given a sequence of moves, returns a string representing the sequence
+    //     in standard algebraic notation (e.g., ``1. e4 e5 2. Nf3 Nc6`` or
+    //     ``37...Bg6 38. fxg6``).
+
+    //     The board will not be modified as a result of calling this.
+
+    //     :raises: :exc:`invalid_argument` if any moves in the sequence are illegal.
+    //     */
+    //     BaseBoardT* board = this->copy(false);
+    //     san = []
+
+    //     for move in variation:
+    //         if not board.is_legal(move):
+    //             raise ValueError(f"illegal move {move} in position {board.fen()}")
+
+    //         if board.turn == WHITE:
+    //             san.append(f"{board.fullmove_number}. {board.san_and_push(move)}")
+    //         elif not san:
+    //             san.append(f"{board.fullmove_number}...{board.san_and_push(move)}")
+    //         else:
+    //             san.append(board.san_and_push(move))
+
+    //     return " ".join(san);
+    // }
+
 private:
     vector<_BoardState *> _stack;
 
@@ -3031,6 +3181,386 @@ private:
                 this->castling_rights |= BB_FILES[distance(FILE_NAMES, it)] & backrank;
             }
         }
+    }
+
+    string _epd_operations(unordered_map<string, optional<variant<string, int, float, Move *, vector<Move *>>>> operations)
+    {
+        vector<char> epd;
+        bool first_op = true;
+
+        for (auto [opcode, operand] : operations)
+        {
+            if (opcode == "-")
+                throw "dash (-) is not a valid epd opcode";
+            if (opcode.find(' ') != string::npos)
+                throw "invalid character ' ' in epd opcode: '" + opcode + "'";
+            if (opcode.find('\n') != string::npos)
+                throw "invalid character '\n' in epd opcode: '" + opcode + "'";
+            if (opcode.find('\t') != string::npos)
+                throw "invalid character '\t' in epd opcode: '" + opcode + "'";
+            if (opcode.find('\r') != string::npos)
+                throw "invalid character '\r' in epd opcode: '" + opcode + "'";
+
+            if (!first_op)
+                epd.push_back(' ');
+            first_op = false;
+            std::copy(opcode.begin(), opcode.end(), back_inserter(epd));
+
+            if (operand == nullopt)
+                epd.push_back(';');
+            else if (holds_alternative<Move *>(*operand))
+            {
+                epd.push_back(' ');
+                string san = this->san(get<Move *>(*operand));
+                std::copy(san.begin(), san.end(), back_inserter(epd));
+                epd.push_back(';');
+            }
+            else if (holds_alternative<int>(*operand))
+            {
+                string s = " " + to_string(get<int>(*operand)) + ";";
+                std::copy(s.begin(), s.end(), back_inserter(epd));
+            }
+            else if (holds_alternative<float>(*operand))
+            {
+                if (!isfinite(get<float>(*operand)))
+                    throw "expected numeric epd operand to be finite, got: " + to_string(get<float>(*operand));
+                string s = " " + to_string(get<float>(*operand)) + ";";
+                std::copy(s.begin(), s.end(), back_inserter(epd));
+            }
+            else if (opcode == "pv" && holds_alternative<vector<Move *>>(*operand))
+            {
+                BoardT *position = this->copy(false);
+                for (Move *move : get<vector<Move *>>(*operand))
+                {
+                    epd.push_back(' ');
+                    string s = position->san_and_push(move);
+                    std::copy(s.begin(), s.end(), back_inserter(epd));
+                }
+                epd.push_back(';');
+            }
+            else if ((opcode == "am" || opcode == "bm") && holds_alternative<vector<Move *>>(*operand))
+            {
+                vector<string> v;
+                for (Move *move : get<vector<Move *>>(*operand))
+                    v.push_back(this->san(move));
+                sort(v.begin(), v.end());
+                for (string san : v)
+                {
+                    epd.push_back(' ');
+                    std::copy(san.begin(), san.end(), back_inserter(epd));
+                }
+                epd.push_back(';');
+            }
+            else
+            {
+                // push_back as escaped string.
+                string s = " \"";
+                std::copy(s.begin(), s.end(), back_inserter(epd));
+                s = regex_replace(regex_replace(regex_replace(regex_replace(regex_replace(get<string>(*operand), regex("\\"), "\\\\"), regex("\t"), "\\t"), regex("\r"), "\\r"), regex("\n"), "\\n"), regex("\""), "\\\"");
+                std::copy(s.begin(), s.end(), back_inserter(epd));
+                s = "\";";
+                std::copy(s.begin(), s.end(), back_inserter(epd));
+            }
+        }
+
+        return string(epd.begin(), epd.end());
+    }
+
+    unordered_map<string, optional<variant<string, int, float, Move *, vector<Move *>>>> _parse_epd_ops(string operation_part, function<Board *()> make_board)
+    {
+        unordered_map<string, optional<variant<string, int, float, Move *, vector<Move *>>>> operations;
+        string state = "opcode";
+        string opcode = "";
+        string operand = "";
+        optional<BoardT *> position = nullopt;
+
+        vector<optional<char>> v(operation_part.begin(), operation_part.end());
+        v.push_back(nullopt);
+        for (optional<char> ch : operation_part)
+        {
+            if (state == "opcode")
+            {
+                if (*ch == ' ' || *ch == '\t' || *ch == '\r' || *ch == '\n')
+                {
+                    if (opcode == "-")
+                        opcode = "";
+                    else if (!opcode.empty())
+                        state = "after_opcode";
+                }
+                else if (ch == nullopt || *ch == ';')
+                {
+                    if (opcode == "-")
+                        opcode = "";
+                    else if (!opcode.empty())
+                    {
+                        operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? optional<vector<Move *>>() : nullopt;
+                        opcode = "";
+                    }
+                }
+                else
+                    opcode += *ch;
+            }
+            else if (state == "after_opcode")
+            {
+                if (*ch == ' ' || *ch == '\t' || *ch == '\r' || *ch == '\n')
+                    ;
+                else if (*ch == '\"')
+                    state = "string";
+                else if (ch == nullopt || *ch == ';')
+                {
+                    if (!opcode.empty())
+                    {
+                        operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? optional<vector<Move *>>() : nullopt;
+                        opcode = "";
+                    }
+                    state = "opcode";
+                }
+                else if (*ch == '+' || *ch == '-' || *ch == '.' || isdigit(*ch))
+                {
+                    operand = *ch;
+                    state = "numeric";
+                }
+                else
+                {
+                    operand = *ch;
+                    state = "san";
+                }
+            }
+            else if (state == "numeric")
+            {
+                if (ch == nullopt || *ch == ';')
+                {
+                    if (operand.find('.') != string::npos || operand.find('e') != string::npos || operand.find('E') != string::npos)
+                    {
+                        float parsed = stof(operand);
+                        if (!isfinite(parsed))
+                            throw invalid_argument("invalid numeric operand for epd operation " + opcode + ": " + operand);
+                        operations[opcode] = parsed;
+                    }
+                    else
+                        operations[opcode] = stoi(operand);
+                    opcode = "";
+                    operand = "";
+                    state = "opcode";
+                }
+                else
+                    operand += *ch;
+            }
+            else if (state == "string")
+            {
+                if (ch == nullopt || *ch == '\"')
+                {
+                    operations[opcode] = operand;
+                    opcode = "";
+                    operand = "";
+                    state = "opcode";
+                }
+                else if (*ch == '\\')
+                    state = "string_escape";
+                else
+                    operand += *ch;
+            }
+            else if (state == "string_escape")
+            {
+                if (ch == nullopt)
+                {
+                    operations[opcode] = operand;
+                    opcode = "";
+                    operand = "";
+                    state = "opcode";
+                }
+                else if (*ch == 'r')
+                {
+                    operand += "\r";
+                    state = "string";
+                }
+                else if (*ch == 'n')
+                {
+                    operand += "\n";
+                    state = "string";
+                }
+                else if (*ch == 't')
+                {
+                    operand += "\t";
+                    state = "string";
+                }
+                else
+                {
+                    operand += *ch;
+                    state = "string";
+                }
+            }
+            else if (state == "san")
+            {
+                if (ch == nullopt || *ch == ';')
+                {
+                    if (position == nullopt)
+                        optional position(make_board());
+
+                    if (opcode == "pv")
+                    {
+                        // A variation.
+                        vector<Move *> variation = {};
+                        vector<string> splt;
+                        stringstream ss(operand);
+                        string s;
+                        while (getline(ss, s, ' '))
+                            splt.push_back(s);
+                        for (string token : splt)
+                        {
+                            Move *move = (*position)->parse_xboard(token);
+                            variation.push_back(move);
+                            (*position)->push(move);
+                        }
+
+                        // Reset the position.
+                        while (!(*position)->move_stack.empty())
+                            (*position)->pop();
+
+                        operations[opcode] = variation;
+                    }
+                    else if (opcode == "bm" || opcode == "am")
+                    {
+                        // A set of moves.
+                        vector<string> splt;
+                        stringstream ss(operand);
+                        string s;
+                        while (getline(ss, s, ' '))
+                            splt.push_back(s);
+                        vector<Move *> parsed;
+                        for (string token : splt)
+                            parsed.push_back((*position)->parse_xboard(token));
+                        operations[opcode] = parsed;
+                    }
+                    else
+                        // A single move.
+                        operations[opcode] = (*position)->parse_xboard(operand);
+
+                    opcode = "";
+                    operand = "";
+                    state = "opcode";
+                }
+                else
+                    operand += *ch;
+            }
+        }
+
+        if (state != "opcode")
+            throw;
+        return operations;
+    }
+
+    string _algebraic(Move *move, bool long_ = false)
+    {
+        string san = this->_algebraic_and_push(move, long_);
+        this->pop();
+        return san;
+    }
+
+    string _algebraic_and_push(Move *move, bool long_ = false)
+    {
+        string san = this->_algebraic_without_suffix(move, long_);
+
+        // Look ahead for check or checkmate.
+        this->push(move);
+        bool is_check = this->is_check();
+        bool is_checkmate = (is_check && this->is_checkmate()) || this->is_variant_loss() || this->is_variant_win();
+
+        // Add check or checkmate suffix.
+        if (is_checkmate && *move)
+            return san + "#";
+        else if (is_check && *move)
+            return san + "+";
+        else
+            return san;
+    }
+
+    string _algebraic_without_suffix(Move *move, bool long_ = false)
+    {
+        // Null move.
+        if (!*move)
+            return "--";
+
+        string san;
+        // Drops.
+        if (move->drop)
+        {
+            san = "";
+            if (*move->drop != PAWN)
+                san = toupper(piece_symbol(move->drop));
+            san += "@" + SQUARE_NAMES[move->to_square];
+            return san;
+        }
+
+        // Castling.
+        if (this->is_castling(move))
+        {
+            if (square_file(move->to_square) < square_file(move->from_square))
+                return "O-O-O";
+            else
+                return "O-O";
+        }
+
+        optional<PieceType> piece_type = this->piece_type_at(move->from_square);
+        if (!piece_type)
+            throw "san() and lan() expect move to be legal or null, but got " + string(*move) + " in " + this->fen();
+        bool capture = this->is_capture(move);
+
+        if (*piece_type == PAWN)
+            san = "";
+        else
+            san = toupper(piece_symbol(piece_type));
+
+        if (long_)
+            san += SQUARE_NAMES[move->from_square];
+        else if (*piece_type != PAWN)
+        {
+            // Get ambiguous move candidates.
+            // Relevant candidates: not exactly the current move,
+            // but to the same square.
+            Bitboard others = 0;
+            Bitboard from_mask = this->pieces_mask(*piece_type, this->turn);
+            Bitboard from_mask &= ~BB_SQUARES[move->from_square];
+            Bitboard to_mask = BB_SQUARES[move->to_square];
+            for (Move *candidate : this->generate_legal_moves(from_mask, to_mask))
+                others |= BB_SQUARES[candidate->from_square];
+
+            // Disambiguate.
+            if (others)
+            {
+                bool row = false, column = false;
+
+                if (others & BB_RANKS[square_rank(move->from_square)])
+                    column = true;
+
+                if (others & BB_FILES[square_file(move->from_square)])
+                    row = true;
+                else
+                    column = true;
+
+                if (column)
+                    san += FILE_NAMES[square_file(move->from_square)];
+                if (row)
+                    san += RANK_NAMES[square_rank(move->from_square)];
+            }
+        }
+        else if (capture)
+            san += FILE_NAMES[square_file(move->from_square)];
+
+        // Captures.
+        if (capture)
+            san += "x";
+        else if (long_)
+            san += "-";
+
+        // Destination square.
+        san += SQUARE_NAMES[move->to_square];
+
+        // Promotion.
+        if (move->promotion)
+            san += "=" + toupper(piece_symbol(move->promotion));
+
+        return san;
     }
 };
 
