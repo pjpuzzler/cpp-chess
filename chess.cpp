@@ -1016,7 +1016,7 @@ namespace std {
                     }
                 }
 
-                return string(builder.begin(), builder.end());
+                return string(begin(builder), end(builder));
             }
 
 
@@ -1178,7 +1178,7 @@ namespace std {
                     }
                 }
 
-                return string(builder.begin(), builder.end());
+                return string(begin(builder), end(builder));
             }
 
             string unicode(bool invert_color = false, bool borders = false, const string &empty_square = "⭘") const {
@@ -1192,8 +1192,8 @@ namespace std {
                 vector<char> builder;
                 for (int rank_index = 7; rank_index >= 0; --rank_index) {
                     if (borders) {
-                        builder.insert(builder.end(), 2, ' ');
-                        builder.insert(builder.end(), 17, '-');
+                        builder.insert(end(builder), 2, ' ');
+                        builder.insert(end(builder), 17, '-');
                         builder.push_back('\n');
 
                         builder.push_back(RANK_NAMES[rank_index]);
@@ -1213,9 +1213,9 @@ namespace std {
 
                         if (piece) {
                             string unicode_symbol = piece->unicode_symbol(invert_color);
-                            builder.insert(builder.end(), unicode_symbol.begin(), unicode_symbol.end());
+                            builder.insert(end(builder), begin(unicode_symbol), end(unicode_symbol));
                         } else {
-                            builder.insert(builder.end(), empty_square.begin(), empty_square.end());
+                            builder.insert(end(builder), begin(empty_square), end(empty_square));
                         }
                     }
 
@@ -1229,13 +1229,13 @@ namespace std {
                 }
 
                 if (borders) {
-                    builder.insert(builder.end(), 2, ' ');
-                    builder.insert(builder.end(), 17, '-');
+                    builder.insert(end(builder), 2, ' ');
+                    builder.insert(end(builder), 17, '-');
                     builder.push_back('\n');
-                    builder.insert(builder.end(), begin("   a b c d e f g h"), end("   a b c d e f g h"));
+                    builder.insert(end(builder), begin("   a b c d e f g h"), end("   a b c d e f g h"));
                 }
 
-                return string(builder.begin(), builder.end());
+                return string(begin(builder), end(builder));
             }
 
 
@@ -1463,8 +1463,8 @@ namespace std {
 
             void _set_board_fen(string fen) const {
                 // Compatibility with set_fen().
-                auto it = fen.begin();
-                auto it2 = fen.rbegin();
+                auto it = begin(fen);
+                auto it2 = rbegin(fen);
                 while (isspace(*it)) {
                     ++it;
                 }
@@ -1586,7 +1586,7 @@ namespace std {
                 // Knights.
                 this->knights = BB_EMPTY;
                 for (int i = 0; i < 8; ++i) {
-                    if (find(used.begin(), used.end(), i) == used.end()) {
+                    if (find(begin(used), end(used), i) == end(used)) {
                         if (n1 == 0 || n2 == 0) {
                             this->knights |= BB_FILES[i] & BB_BACKRANKS;
                             used.push_back(i);
@@ -1598,21 +1598,21 @@ namespace std {
 
                 // RKR.
                 for (int i = 0; i < 8; ++i) {
-                    if (find(used.begin(), used.end(), i) == used.end()) {
+                    if (find(begin(used), end(used), i) == end(used)) {
                         this->rooks = BB_FILES[i] & BB_BACKRANKS;
                         used.push_back(i);
                         break;
                     }
                 }
                 for (int i = 1; i < 8; ++i) {
-                    if (find(used.begin(), used.end(), i) == used.end()) {
+                    if (find(begin(used), end(used), i) == end(used)) {
                         this->kings = BB_FILES[i] & BB_BACKRANKS;
                         used.push_back(i);
                         break;
                     }
                 }
                 for (int i = 2; i < 8; ++i) {
-                    if (find(used.begin(), used.end(), i) == used.end()) {
+                    if (find(begin(used), end(used), i) == end(used)) {
                         this->rooks |= BB_FILES[i] & BB_BACKRANKS;
                         break;
                     }
@@ -2109,7 +2109,7 @@ namespace std {
                 // If already in check, look if it is an evasion.
                 Bitboard checkers = this->attackers_mask(!this->turn, *king);
                 vector<Move> evasions = this->_generate_evasions(*king, checkers, BB_SQUARES[move.from_square], BB_SQUARES[move.to_square]);
-                if (checkers && find(evasions.begin(), evasions.end(), move) == evasions.end()) {
+                if (checkers && find(begin(evasions), end(evasions), move) == end(evasions)) {
                     return true;
                 }
 
@@ -2164,7 +2164,7 @@ namespace std {
                 if (*piece == KING) {
                     Move move = this->_from_chess960(this->chess960, move.from_square, move.to_square);
                     vector<Move> castling_moves = this->generate_castling_moves();
-                    if (find(castling_moves.begin(), castling_moves.end(), move) != castling_moves.end()) {
+                    if (find(begin(castling_moves), end(castling_moves), move) != end(castling_moves)) {
                         return true;
                     }
                 }
@@ -2177,7 +2177,7 @@ namespace std {
                 // Handle pawn moves.
                 if (*piece == PAWN) {
                     vector<Move> pseudo_legal_moves = this->generate_pseudo_legal_moves(from_mask, to_mask);
-                    return find(pseudo_legal_moves.begin(), pseudo_legal_moves.end(), move) != pseudo_legal_moves.end();
+                    return find(begin(pseudo_legal_moves), end(pseudo_legal_moves), move) != end(pseudo_legal_moves);
                 }
 
                 // Handle all other pieces.
@@ -2518,7 +2518,7 @@ namespace std {
                 */
                 // Fast check, based on occupancy only.
                 int maybe_repetitions = 1;
-                for (auto it = this->_stack.rbegin(); it != this->_stack.rend(); ++it) {
+                for (auto it = rbegin(this->_stack); it != rend(this->_stack); ++it) {
                     _BoardState state = *it;
                     if (state.occupied == this->occupied) {
                         ++maybe_repetitions;
@@ -2762,7 +2762,7 @@ namespace std {
             }
 
 
-            string castling_shredder_fen() const {
+            string castling_shredder_fen() {
                 Bitboard castling_rights = this->clean_castling_rights();
                 if (!castling_rights) {
                     return "-";
@@ -2778,7 +2778,7 @@ namespace std {
                     builder.push_back(FILE_NAMES[square_file(square)]);
                 }
 
-                return string(builder.begin(), builder.end());
+                return string(begin(builder), end(builder));
             }
 
             string castling_xfen() {
@@ -2816,7 +2816,7 @@ namespace std {
                 }
 
                 if (!builder.empty())
-                    return string(builder.begin(), builder.end());
+                    return string(begin(builder), end(builder));
                 else
                     return "-";
             }
@@ -3117,8 +3117,8 @@ namespace std {
 
                 :throws: :exc:`std::invalid_argument` if the EPD string is invalid.
                 */
-                auto it = epd.begin();
-                auto it2 = epd.rbegin();
+                auto it = begin(epd);
+                auto it2 = rbegin(epd);
                 while (isspace(*it))
                     ++it;
                 while (isspace(*it2) || *it2 == ';')
@@ -3132,15 +3132,15 @@ namespace std {
                 // Parse ops.
                 if (parts.size() > 4) {
                     string joined;
-                    for (auto it = parts.begin(); it != parts.end() - 1; ++it) {
+                    for (auto it = begin(parts); it != end(parts) - 1; ++it) {
                         joined += *it;
                         joined += " ";
                     }
                     joined.resize(joined.size() - 1);
                     auto operations = this->_parse_epd_ops(parts.back(), [&]() -> Board  {return Board(joined + " 0 1");});
                     parts.pop_back();
-                    parts.push_back(operations.find("hmvc") != operations.end() ? get<string>(*operations["hmvc"]) : "0");
-                    parts.push_back(operations.find("fmvn") != operations.end() ? get<string>(*operations["fmvn"]) : "1");
+                    parts.push_back(operations.find("hmvc") != end(operations) ? get<string>(*operations["hmvc"]) : "0");
+                    parts.push_back(operations.find("fmvn") != end(operations) ? get<string>(*operations["fmvn"]) : "1");
                     joined = "";
                     for (char c : joined) {
                         joined += c;
@@ -3200,7 +3200,7 @@ namespace std {
                         san.push_back(board->san_and_push(move));
                 }
 
-                return string(san.begin(), san.end());
+                return string(begin(san), end(san));
             }
 
             Move parse_san(string san) {
@@ -3845,12 +3845,12 @@ namespace std {
                 if (holds_alternative<bool>(stack) && get<bool>(stack) || holds_alternative<int>(stack) && get<int>(stack)) {
                     stack = int(holds_alternative<bool>(stack) && get<bool>(stack) == true ? this->move_stack.size() : get<int>(stack));
                     vector<Move > move_stack;
-                    for (auto it = this->move_stack.end() - get<int>(stack); it != this->move_stack.end(); ++it) {
+                    for (auto it = thisend(->move_stack) - get<int>(stack); it != this->end(move_stack); ++it) {
                         Move copy = **it;
                         move_stack.push_back(copy);
                     }
                     board->move_stack = move_stack;
-                    board->_stack = vector<Move >(this->_stack.end() - get<int>(stack), this->_stack.end());
+                    board->_stack = vector<Move >(thisend(->_stack) - get<int>(stack), this->end(_stack));
                 }
 
                 return board;
@@ -3952,53 +3952,53 @@ namespace std {
                     if (!first_op)
                         epd.push_back(' ');
                     first_op = false;
-                    epd.insert(epd.end(), opcode.begin(), opcode.end());
+                    epd.insert(end(epd), begin(opcode), end(opcode));
 
                     if (operand == nullopt)
                         epd.push_back(';');
                     else if (holds_alternative<Move >(*operand)) {
                         epd.push_back(' ');
                         string san = this->san(get<Move >(*operand));
-                        epd.insert(epd.end(), san.begin(), san.end());
+                        epd.insert(end(epd), begin(san), end(san));
                         epd.push_back(';');
                     } else if (holds_alternative<int>(*operand)) {
                         string s = " " + to_string(get<int>(*operand)) + ";";
-                        epd.insert(epd.end(), s.begin(), s.end());
+                        epd.insert(end(epd), begin(s), end(s));
                     } else if (holds_alternative<float>(*operand)) {
                         if (!isfinite(get<float>(*operand)))
                             throw "expected numeric epd operand to be finite, got: " + to_string(get<float>(*operand));
                         string s = " " + to_string(get<float>(*operand)) + ";";
-                        epd.insert(epd.end(), s.begin(), s.end());
+                        epd.insert(end(epd), begin(s), end(s));
                     } else if (opcode == "pv" && holds_alternative<vector<Move >>(*operand)) {
                         BoardT *position = this->copy(false);
                         for (Move move : get<vector<Move >>(*operand)) {
                             epd.push_back(' ');
                             string s = position->san_and_push(move);
-                            epd.insert(epd.end(), s.begin(), s.end());
+                            epd.insert(end(epd), begin(s), end(s));
                         }
                         epd.push_back(';');
                     } else if ((opcode == "am" || opcode == "bm") && holds_alternative<vector<Move >>(*operand)) {
                         vector<string> v;
                         for (Move move : get<vector<Move >>(*operand))
                             v.push_back(this->san(move));
-                        sort(v.begin(), v.end());
+                        sort(begin(v), end(v));
                         for (string san : v) {
                             epd.push_back(' ');
-                            epd.insert(epd.end(), san.begin(), san.end());
+                            epd.insert(end(epd), begin(san), end(san));
                         }
                         epd.push_back(';');
                     } else {
                         // push_back as escaped string.
                         string s = " \"";
-                        epd.insert(epd.end(), s.begin(), s.end());
+                        epd.insert(end(epd), begin(s), end(s));
                         s = regex_replace(regex_replace(regex_replace(regex_replace(regex_replace(get<string>(*operand), regex("\\"), "\\\\"), regex("\t"), "\\t"), regex("\r"), "\\r"), regex("\n"), "\\n"), regex("\""), "\\\"");
-                        epd.insert(epd.end(), s.begin(), s.end());
+                        epd.insert(end(epd), begin(s), end(s));
                         s = "\";";
-                        epd.insert(epd.end(), s.begin(), s.end());
+                        epd.insert(end(epd), begin(s), end(s));
                     }
                 }
 
-                return string(epd.begin(), epd.end());
+                return string(begin(epd), end(epd));
             }
 
             unordered_map<string, optional<variant<string, int, float, Move , vector<Move >>>> _parse_epd_ops(string operation_part, function<Board ()> make_board) {
@@ -4008,7 +4008,7 @@ namespace std {
                 string operand = "";
                 optional<BoardT *> position = nullopt;
 
-                vector<optional<char>> v(operation_part.begin(), operation_part.end());
+                vector<optional<char>> v(begin(operation_part), end(operation_part));
                 v.push_back(nullopt);
                 for (optional<char> ch : operation_part) {
                     if (state == "opcode") {
@@ -4493,11 +4493,11 @@ namespace std {
             }
 
             auto begin() const {
-                return this->board.generate_pseudo_legal_moves().begin();
+                return std::begin(this->board.generate_pseudo_legal_moves());
             }
 
             auto end() const {
-                return this->board.generate_pseudo_legal_moves().end();
+                return std::end(this->board.generate_pseudo_legal_moves());
             }
         };
 
@@ -4539,11 +4539,11 @@ namespace std {
             }
 
             auto begin() const {
-                return this->board->generate_legal_moves().begin();
+                return std::begin(this->board.generate_legal_moves());
             }
 
             auto end() const {
-                return this->board->generate_legal_moves().end();
+                return std::end(this->board.generate_legal_moves());
             }
         };
 
@@ -4593,7 +4593,7 @@ namespace std {
             >>> std::cout << bool(squares);
             1
 
-            >>> std::cout << std::find(std::begin(squares), std::end(squares), chess::B1) != std::end(squares);;
+            >>> std::cout << std::find(begin(squares), end(squares), chess::B1) != end(squares);;
             1
 
             >>> for (chess::Square square : squares) {
