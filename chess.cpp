@@ -1461,7 +1461,7 @@ namespace std {
                 }
             }
 
-            void _set_board_fen(string fen) const {
+            void _set_board_fen(const string &fen) const {
                 // Compatibility with set_fen().
                 auto it = begin(fen);
                 auto it2 = rbegin(fen);
@@ -1491,7 +1491,7 @@ namespace std {
                 }
 
                 // Validate each row.
-                for (string row : rows) {
+                for (const string &row : rows) {
                     int field_sum = 0;
                     bool previous_was_digit = false;
                     bool previous_was_piece = false;
@@ -2427,7 +2427,7 @@ namespace std {
                 }
 
                 if (this->halfmove_clock >= 99) {
-                    for (Move move : this->generate_legal_moves()) {
+                    for (const Move &move : this->generate_legal_moves()) {
                         if (!this->is_zeroing(move)) {
                             this->push(move);
                             try {
@@ -2489,7 +2489,7 @@ namespace std {
                 }
 
                 // The next legal move is a threefold repetition.
-                for (Move move : this->generate_legal_moves()) {
+                for (const Move &move : this->generate_legal_moves()) {
                     this->push(move);
                     try {
                         if (transpositions.at(this->_transposition_key()) >= 2) {
@@ -2533,7 +2533,7 @@ namespace std {
 
                 // Check full replay.
                 auto transposition_key = this->_transposition_key();
-                stack<Move > switchyard;
+                stack<Move> switchyard;
 
                 try {
                     while (true) {
@@ -2781,13 +2781,14 @@ namespace std {
                 return string(begin(builder), end(builder));
             }
 
-            string castling_xfen() {
+            string castling_xfen() const {
                 vector<char> builder;
 
                 for (Color color : COLORS) {
                     optional<Square> king = this->king(color);
-                    if (king == nullopt)
+                    if (king == nullopt) {
                         continue;
+                    }
 
                     int king_file = square_file(*king);
                     Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
@@ -2798,36 +2799,32 @@ namespace std {
 
                         Bitboard other_rooks = this->occupied_co[color] & this->rooks & backrank & ~BB_SQUARES[rook_square];
 
-                        bool flag = false;
+                        char ch = a_side ? 'q' : 'k';
                         for (Square other : scan_reversed(other_rooks)) {
-                            if ((square_file(other) < rook_file) == a_side)
-                            {
-                                flag = true;
+                            if ((square_file(other) < rook_file) == a_side) {
+                                ch = FILE_NAMES[rook_file];
+                                break;
                             }
                         }
-                        char ch;
-                        if (flag)
-                            ch = FILE_NAMES[rook_file];
-                        else
-                            ch = a_side ? 'q' : 'k';
 
                         builder.push_back(color == WHITE ? toupper(ch) : ch);
                     }
                 }
 
-                if (!builder.empty())
+                if (!builder.empty()) {
                     return string(begin(builder), end(builder));
-                else
+                } else {
                     return "-";
+                }
             }
 
-            bool has_pseudo_legal_en_passant() {
-                // Checks if there is a pseudo-legal en passant capture.
+            bool has_pseudo_legal_en_passant() const {
+                /* Checks if there is a pseudo-legal en passant capture. */
                 return this->ep_square != nullopt && !this->generate_pseudo_legal_ep().empty();
             }
 
             bool has_legal_en_passant() const {
-                // Checks if there is a legal en passant capture.
+                /* Checks if there is a legal en passant capture. */
                 return this->ep_square != nullopt && !this->generate_legal_ep().empty();
             }
 
@@ -2860,95 +2857,97 @@ namespace std {
                 return this->epd(shredder, en_passant, promoted) + " " + to_string(this->halfmove_clock) + " " + to_string(this->fullmove_number);
             }
 
-            string shredder_fen(_EnPassantSpec en_passant = "legal", optional<bool> promoted = nullopt) {
+            string shredder_fen(_EnPassantSpec en_passant = "legal", optional<bool> promoted = nullopt) const {
                 return this->epd(true, en_passant, promoted) + " " + to_string(this->halfmove_clock) + " " + to_string(this->fullmove_number);
             }
 
-            void set_fen(string fen) {
+            void set_fen(const string &fen) {
                 /*
                 Parses a FEN and sets the position from it.
 
                 :throws: :exc:`std::invalid_argument` if syntactically invalid. Use
                     :func:`~chess::Board::is_valid()` to detect invalid positions.
                 */
-                queue<string> parts;
-                stringstream ss(fen);
-                string s;
-                while (getline(ss, s, ' '))
-                    parts.push(s);
+                istringstream iss(fen);
+                deque<string> parts = {istream_iterator<string>(iss), {}};
 
                 // Board part.
                 string board_part;
-                try {
+                if (!parts.empty()) {
                     board_part = parts.front();
-                    parts.pop();
-                } catch (invalid_argument) {
+                    parts.pop_front();
+                } else {
                     throw invalid_argument("empty fen");
                 }
 
                 // Turn.
                 string turn_part;
                 Color turn;
-                try {
+                if (!parts.empty()) {
                     turn_part = parts.front();
-                    parts.pop();
+                    parts.pop_front();
 
-                    if (turn_part == "w")
+                    if (turn_part == "w") {
                         turn = WHITE;
-                    else if (turn_part == "b")
+                    } else if (turn_part == "b") {
                         turn = BLACK;
-                    else
-                        throw invalid_argument("expected 'w' or 'b' for turn part of fen: " + fen);
-                } catch (invalid_argument) {
+                    } else {
+                        throw invalid_argument("expected 'w' or 'b' for turn part of fen: '" + fen + "'");
+                    }
+                } else {
                     turn = WHITE;
                 }
 
                 // Validate castling part.
                 string castling_part;
-                try {
+                if (!parts.empty()) {
                     castling_part = parts.front();
-                    parts.pop();
+                    parts.pop_front();
 
-                    if (!regex_match(castling_part, FEN_CASTLING_REGEX))
-                        throw invalid_argument("invalid castling part in fen: " + fen);
-                } catch (invalid_argument) {
+                    if (!regex_match(castling_part, FEN_CASTLING_REGEX)) {
+                        throw invalid_argument("invalid castling part in fen: '" + fen + "'");
+                    }
+                } else {
                     castling_part = "-";
                 }
 
                 // En passant square.
                 optional<string> ep_part;
                 optional<Square> ep_square;
-                try {
+                if (!parts.empty()) {
                     ep_part = parts.front();
-                    parts.pop();
+                    parts.pop_front();
 
                     if (ep_part != "-") {
                         auto it = find(begin(SQUARE_NAMES), end(SQUARE_NAMES), ep_part);
-                        if (it == end(SQUARE_NAMES))
-                            throw invalid_argument("invalid en passant part in fen: " + fen);
+                        if (it == end(SQUARE_NAMES)) {
+                            throw invalid_argument("invalid en passant part in fen: '" + fen + "'");
+                        }
                         ep_square = distance(SQUARE_NAMES, it);
-                    } else
+                    } else {
                         ep_square = nullopt;
-                } catch (invalid_argument) {
+                    }
+                } else {
                     ep_square = nullopt;
                 }
 
                 // Check that the half-move part is valid.
                 string halfmove_part;
                 int halfmove_clock;
-                try {
+                if (!parts.empty()) {
                     halfmove_part = parts.front();
-                    parts.pop();
+                    parts.pop_front();
 
                     try {
                         halfmove_clock = stoi(halfmove_part);
                     } catch (invalid_argument) {
-                        throw invalid_argument("invalid half-move clock in fen: " + fen);
+                        throw invalid_argument("invalid half-move clock in fen: '" + fen + "'");
                     }
 
-                    if (halfmove_clock < 0)
-                        throw invalid_argument("half-move clock cannot be negative: " + fen);
-                } catch (invalid_argument) {
+                    if (halfmove_clock < 0) {
+                        throw invalid_argument("half-move clock cannot be negative: '" + fen + "'");
+                    }
+                } else {
                     halfmove_clock = 0;
                 }
 
@@ -2956,27 +2955,29 @@ namespace std {
                 // 0 is allowed for compatibility, but later replaced with 1.
                 string fullmove_part;
                 int fullmove_number;
-                try {
+                if (!parts.empty()) {
                     fullmove_part = parts.front();
-                    parts.pop();
+                    parts.pop_front();
 
                     try {
                         fullmove_number = stoi(fullmove_part);
                     } catch (invalid_argument) {
-                        throw invalid_argument("invalid fullmove number in fen: " + fen);
+                        throw invalid_argument("invalid fullmove number in fen: '" + fen + "'");
                     }
 
-                    if (fullmove_number < 0)
-                        throw invalid_argument("fullmove number cannot be negative: " + fen);
+                    if (fullmove_number < 0) {
+                        throw invalid_argument("fullmove number cannot be negative: '" + fen + "'");
+                    }
 
                     fullmove_number = max(fullmove_number, 1);
-                } catch (invalid_argument) {
+                } else {
                     fullmove_number = 1;
                 }
 
                 // All parts should be consumed now.
-                if (!parts.empty())
-                    throw invalid_argument("fen string has more parts than expected: " + fen);
+                if (!parts.empty()) {
+                    throw invalid_argument("fen string has more parts than expected: '" + fen + "'");
+                }
 
                 // Validate the board part and set it.
                 this->_set_board_fen(board_part);
@@ -2990,7 +2991,8 @@ namespace std {
                 this->clear_stack();
             }
 
-            void set_castling_fen(string castling_fen) {
+
+            void set_castling_fen(const string &castling_fen) const {
                 /*
                 Sets castling rights from a string in FEN notation like ``Qqk``.
 
@@ -3001,17 +3003,20 @@ namespace std {
                 this->clear_stack();
             }
 
-            void set_board_fen(string fen) {
+
+            void set_board_fen(const string &fen) const {
                 BaseBoard::set_board_fen(fen);
                 this->clear_stack();
             }
 
-            void set_piece_map(unordered_map<Square, Piece> pieces) {
+
+            void set_piece_map(const unordered_map<Square, Piece> &pieces) const {
                 BaseBoard::set_piece_map(pieces);
                 this->clear_stack();
             }
 
-            void set_chess960_pos(int scharnagl) {
+
+            void set_chess960_pos(int scharnagl) const {
                 BaseBoard::set_chess960_pos(scharnagl);
                 this->chess960 = true;
                 this->turn = WHITE;
@@ -3023,7 +3028,8 @@ namespace std {
                 this->clear_stack();
             }
 
-            optional<int> chess960_pos(bool ignore_turn = false, bool ignore_castling = false, bool ignore_counters = true) {
+
+            optional<int> chess960_pos(bool ignore_turn = false, bool ignore_castling = false, bool ignore_counters = true) const {
                 /*
                 Gets the Chess960 starting position index between 0 and 956,
                 or ``std::nullopt`` if the current position is not a Chess960 starting
@@ -3033,28 +3039,33 @@ namespace std {
                 (**ignore_castling**) are required, but move counters
                 (**ignore_counters**) are ignored.
                 */
-                if (this->ep_square)
+                if (this->ep_square) {
                     return nullopt;
+                }
 
                 if (!ignore_turn) {
-                    if (this->turn != WHITE)
+                    if (this->turn != WHITE) {
                         return nullopt;
+                    }
                 }
 
                 if (!ignore_castling) {
-                    if (this->clean_castling_rights() != this->rooks)
+                    if (this->clean_castling_rights() != this->rooks) {
                         return nullopt;
+                    }
                 }
 
                 if (!ignore_counters) {
-                    if (this->fullmove_number != 1 || this->halfmove_clock != 0)
+                    if (this->fullmove_number != 1 || this->halfmove_clock != 0) {
                         return nullopt;
+                    }
                 }
 
                 return BaseBoard::chess960_pos();
             }
 
-            string epd(bool shredder = false, _EnPassantSpec en_passant = "legal", optional<bool> promoted = nullopt, unordered_map<string, optional<variant<string, int, float, Move , vector<Move >>>> operations = {}) {
+
+            string epd(bool shredder = false, const _EnPassantSpec &en_passant = "legal", optional<bool> promoted = nullopt, const unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>> &operations = {}) const {
                 /*
                 Gets an EPD representation of the current position.
 
@@ -3081,20 +3092,22 @@ namespace std {
                 rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - hmvc 0; fmvn 1;
                 */
                 optional<Square> ep_square;
-                if (en_passant == "fen")
+                if (en_passant == "fen") {
                     ep_square = this->ep_square;
-                else if (en_passant == "xfen")
+                } else if (en_passant == "xfen") {
                     ep_square = this->has_pseudo_legal_en_passant() ? this->ep_square : nullopt;
-                else
+                } else {
                     ep_square = this->has_legal_en_passant() ? this->ep_square : nullopt;
+                }
 
                 vector<string> epd = {this->board_fen(promoted),
-                                    this->turn == WHITE ? "w" : "b",
-                                    shredder ? this->castling_shredder_fen() : this->castling_xfen(),
-                                    ep_square != nullopt ? SQUARE_NAMES[*ep_square] : "-"};
+                                      this->turn == WHITE ? "w" : "b",
+                                      shredder ? this->castling_shredder_fen() : this->castling_xfen(),
+                                      ep_square != nullopt ? SQUARE_NAMES[*ep_square] : "-"};
 
-                if (!operations.empty())
+                if (!operations.empty()) {
                     epd.push_back(this->_epd_operations(operations));
+                }
 
                 string s;
                 for (const string &s2 : epd) {
@@ -3105,7 +3118,8 @@ namespace std {
                 return s;
             }
 
-            unordered_map<string, optional<variant<string, int, float, Move , vector<Move >>>> set_epd(string epd) {
+
+            unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>> set_epd(const string &epd) const {
                 /*
                 Parses the given EPD string and uses it to set the position.
 
@@ -3119,21 +3133,38 @@ namespace std {
                 */
                 auto it = begin(epd);
                 auto it2 = rbegin(epd);
-                while (isspace(*it))
+                while (isspace(*it)) {
                     ++it;
-                while (isspace(*it2) || *it2 == ';')
+                }
+                while (isspace(*it2) || *it2 == ';') {
                     ++it2;
+                }
                 vector<string> parts;
-                stringstream ss(string(it, it2.base()));
-                string s;
-                for (int i = 0; getline(ss, s, ' ') && i < 4; ++i)
-                    parts.push_back(s);
+                string s = string(it, it2.base());
+                istringstream iss(s);
+                string s2;
+                for (int i = 0; getline(iss, s2, ' ') && i < 4; ++i) {
+                    parts.push_back(s2);
+                }
+                int i;
+                for (int i = 0, splits = 0; i < s.length() - 1 && splits < 4; ++i) {
+                    if (isspace(s[i + 1])) {
+                        ++splits;
+                        ++i;
+                        while (i < s.length() - 1 && isspace(s[i + 1])) {
+                            ++i;
+                        }
+                    }
+                }
+                parts.push_back(s.substr(i));
+
+                //TODO
 
                 // Parse ops.
                 if (parts.size() > 4) {
                     string joined;
-                    for (auto it = begin(parts); it != end(parts) - 1; ++it) {
-                        joined += *it;
+                    for (string s : parts) {
+                        joined += s;
                         joined += " ";
                     }
                     joined.resize(joined.size() - 1);
@@ -3175,7 +3206,7 @@ namespace std {
                 return this->_algebraic_and_push(move);
             }
 
-            string variation_san(vector<Move > variation) {
+            string variation_san(vector<Move> variation) {
                 /*
                 Given a sequence of moves, returns a string representing the sequence
                 in standard algebraic notation (e.g., ``1. e4 e5 2. Nf3 Nc6`` or
@@ -3185,10 +3216,10 @@ namespace std {
 
                 :throws: :exc:`std::invalid_argument` if any moves in the sequence are illegal.
                 */
-                BaseBoardT *board = this->copy(false);
+                BaseBoardTboard = this->copy(false);
                 vector<string> san;
 
-                for (Move move : variation) {
+                for (const Move &move : variation) {
                     if (!board->is_legal(move))
                         throw invalid_argument("illegal move " + string(*move) + " in position " + board->fen());
 
@@ -3203,7 +3234,7 @@ namespace std {
                 return string(begin(san), end(san));
             }
 
-            Move parse_san(string san) {
+            Move parse_san(const string &san) {
                 /*
                 Uses the current position as the context to parse a move in standard
                 algebraic notation and returns the corresponding move object.
@@ -3218,13 +3249,13 @@ namespace std {
                 // Castling.
                 try {
                     if (san == "O-O" || san == "O-O+" || san == "O-O#" || san == "0-0" || san == "0-0+" || san == "0-0#") {
-                        for (Move move : this->generate_castling_moves()) {
+                        for (const Move &move : this->generate_castling_moves()) {
                             if (this->is_kingside_castling(move))
                                 return move;
                         }
                         throw out_of_range("");
                     } else if (san == "O-O-O" || san == "O-O-O+" || san == "O-O-O#" || san == "0-0-0" || san == "0-0-0+" || san == "0-0-0#") {
-                        for (Move move : this->generate_castling_moves()) {
+                        for (const Move &move : this->generate_castling_moves()) {
                             if (this->is_queenside_castling(move))
                                 return move;
                         }
@@ -3300,8 +3331,8 @@ namespace std {
                     from_mask &= this->pawns;
 
                 // Match legal moves.
-                optional<Move > matched_move = nullopt;
-                for (Move move : this->generate_legal_moves(from_mask, to_mask)) {
+                optional<Move> matched_move = nullopt;
+                for (const Move &move : this->generate_legal_moves(from_mask, to_mask)) {
                     if (bool(move->promotion) != bool(promotion) || *move->promotion != *promotion)
                         continue;
 
@@ -3317,7 +3348,7 @@ namespace std {
                 return *matched_move;
             }
 
-            Move push_san(string san) {
+            Move push_san(const string &san) {
                 /*
                 Parses a move in standard algebraic notation, makes the move and puts
                 it onto the move stack.
@@ -3346,7 +3377,7 @@ namespace std {
                 return move.uci();
             }
 
-            Move parse_uci(string uci) {
+            Move parse_uci(const string &uci) {
                 /*
                 Parses the given move in UCI notation.
 
@@ -3371,7 +3402,7 @@ namespace std {
                 return move;
             }
 
-            Move push_uci(string uci) {
+            Move push_uci(const string &uci) {
                 /*
                 Parses a move in UCI notation and puts it on the move stack.
 
@@ -3397,11 +3428,11 @@ namespace std {
                     return "O-O-O";
             }
 
-            Move parse_xboard(string xboard) {
+            Move parse_xboard(const string &xboard) {
                 return this->parse_san(xboard);
             }
 
-            Move push_xboard(string san) {
+            Move push_xboard(const string &san) {
                 /*
                 Parses a move in standard algebraic notation, makes the move and puts
                 it onto the move stack.
@@ -3705,8 +3736,8 @@ namespace std {
                 return this->status() == STATUS_VALID;
             }
 
-            vector<Move > generate_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
-                vector<Move > iter;
+            vector<Move> generate_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+                vector<Move> iter;
                 if (this->is_variant_end())
                     return iter;
 
@@ -3716,13 +3747,12 @@ namespace std {
                     Bitboard blockers = this->_slider_blockers(king);
                     Bitboard checkers = this->attackers_mask(!this->turn, king);
                     if (checkers) {
-                        for (Move move : this->_generate_evasions(king, checkers, from_mask, to_mask)) {
+                        for (const Move &move : this->_generate_evasions(king, checkers, from_mask, to_mask)) {
                             if (this->_is_safe(king, blockers, move))
                                 iter.push_back(move);
                             else
                             {
-                                for (Move move : this->generate_pseudo_legal_moves(from_mask, to_mask))
-                                {
+                                for (const Move &move : this->generate_pseudo_legal_moves(from_mask, to_mask)) {
                                     if (this->_is_safe(king, blockers, move))
                                         iter.push_back(move);
                                 }
@@ -3730,35 +3760,35 @@ namespace std {
                         }
                     }
                 } else {
-                    for (Move move : this->generate_pseudo_legal_moves(from_mask, to_mask))
+                    for (const Move &move : this->generate_pseudo_legal_moves(from_mask, to_mask))
                         iter.push_back(move);
                 }
                 return iter;
             }
 
-            vector<Move > generate_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
-                vector<Move > iter;
+            vector<Move> generate_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+                vector<Move> iter;
                 if (this->is_variant_end())
                     return iter;
 
-                for (Move move : this->generate_pseudo_legal_ep(from_mask, to_mask)) {
+                for (const Move &move : this->generate_pseudo_legal_ep(from_mask, to_mask)) {
                     if (!this->is_into_check(move))
                         iter.push_back(move);
                 }
                 return iter;
             }
 
-            vector<Move > generate_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) {
-                vector<Move > iter;
-                for (Move move : this->generate_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn]))
+            vector<Move> generate_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) {
+                vector<Move> iter;
+                for (const Move &move : this->generate_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn]))
                     iter.push_back(move);
-                for (Move move : this->generate_legal_ep(from_mask, to_mask))
+                for (const Move &move : this->generate_legal_ep(from_mask, to_mask))
                     iter.push_back(move);
                 return iter;
             }
 
-            vector<Move > generate_castling_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) {
-                vector<Move > iter;
+            vector<Move> generate_castling_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) {
+                vector<Move> iter;
                 if (this->is_variant_end())
                     return iter;
 
@@ -3798,8 +3828,8 @@ namespace std {
                 this->castling_rights = f(this->castling_rights);
             }
 
-            BoardT *transform(function<Bitboard(Bitboard)> f) {
-                BoardT *board = this->copy(false);
+            BoardTtransform(function<Bitboard(Bitboard)> f) {
+                BoardTboard = this->copy(false);
                 board->apply_transform(f);
                 return board;
             }
@@ -3809,7 +3839,7 @@ namespace std {
                 this->turn = !this->turn;
             }
 
-            BoardT *mirror() {
+            BoardTmirror() {
                 /*
                 Returns a mirrored copy of the board.
 
@@ -3820,19 +3850,19 @@ namespace std {
                 Alternatively, :func:`~chess::Board::apply_mirror()` can be used
                 to mirror the board.
                 */
-                BoardT *board = this->copy();
+                BoardTboard = this->copy();
                 board->apply_mirror();
                 return board;
             }
 
-            BoardT *copy(variant<bool, int> stack = true) {
+            BoardTcopy(variant<bool, int> stack = true) {
                 /*
                 Creates a copy of the board.
 
                 Defaults to copying the entire move stack. Alternatively, *stack* can
                 be ``false``, or an integer to copy a limited number of moves.
                 */
-                BoardT *board = BaseBoard::copy();
+                BoardTboard = BaseBoard::copy();
 
                 board->chess960 = this->chess960;
 
@@ -3844,36 +3874,36 @@ namespace std {
 
                 if (holds_alternative<bool>(stack) && get<bool>(stack) || holds_alternative<int>(stack) && get<int>(stack)) {
                     stack = int(holds_alternative<bool>(stack) && get<bool>(stack) == true ? this->move_stack.size() : get<int>(stack));
-                    vector<Move > move_stack;
+                    vector<Move> move_stack;
                     for (auto it = thisend(->move_stack) - get<int>(stack); it != this->end(move_stack); ++it) {
                         Move copy = **it;
                         move_stack.push_back(copy);
                     }
                     board->move_stack = move_stack;
-                    board->_stack = vector<Move >(thisend(->_stack) - get<int>(stack), this->end(_stack));
+                    board->_stack = vector<Move>(thisend(->_stack) - get<int>(stack), this->end(_stack));
                 }
 
                 return board;
             }
 
-            static BoardT *empty(bool chess960 = false, ...) {
+            static BoardTempty(bool chess960 = false, ...) {
                 // Creates a new empty board. Also see :func:`~chess::Board::clear()`.
                 return BoardT(nullopt, chess960);
             }
 
-            static tuple<Board , unordered_map<string, optional<variant<string, int, float, Move , vector<Move >>>>> from_epd(string epd, bool chess960 = false, ...) {
+            static tuple<Board , unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>>> from_epd(const string &epd, bool chess960 = false, ...) {
                 /*
                 Creates a new board from an EPD string. See
                 :func:`~chess::Board::set_epd()`.
 
                 Returns the board and the dictionary of parsed operations as a tuple.
                 */
-                BoardT *board = Board::empty(chess960);
+                BoardTboard = Board::empty(chess960);
                 return {board, board->set_epd(epd)};
             }
 
-            static BoardT *from_chess960_pos(int scharnagl) {
-                BoardT *board = Board::empty(true);
+            static BoardTfrom_chess960_pos(int scharnagl) {
+                BoardTboard = Board::empty(true);
                 board->set_chess960_pos(scharnagl);
                 return board;
             }
@@ -3893,14 +3923,15 @@ namespace std {
 
             }
 
-            void _set_castling_fen(string castling_fen) {
+            void _set_castling_fen(const string &castling_fen) const {
                 if (castling_fen.empty() || castling_fen == "-") {
                     this->castling_rights = BB_EMPTY;
                     return;
                 }
 
-                if (!regex_match(castling_fen, FEN_CASTLING_REGEX))
-                    throw invalid_argument("invalid castling fen: " + castling_fen);
+                if (!regex_match(castling_fen, FEN_CASTLING_REGEX)) {
+                    throw invalid_argument("invalid castling fen: '" + castling_fen + "'");
+                }
 
                 this->castling_rights = BB_EMPTY;
 
@@ -3913,82 +3944,86 @@ namespace std {
 
                     if (flag == 'q') {
                         // Select the leftmost rook.
-                        if (king != nullopt && lsb(rooks) < *king)
+                        if (king != nullopt && lsb(rooks) < *king) {
                             this->castling_rights |= rooks & -rooks;
-                        else
+                        } else {
                             this->castling_rights |= BB_FILE_A & backrank;
+                        }
                     } else if (flag == 'k') {
                         // Select the rightmost rook.
                         int rook = msb(rooks);
-                        if (king != nullopt && *king < rook)
+                        if (king != nullopt && *king < rook) {
                             this->castling_rights |= BB_SQUARES[rook];
-                        else
+                        } else {
                             this->castling_rights |= BB_FILE_H & backrank;
+                        }
                     } else {
                         auto it = find(begin(FILE_NAMES), end(FILE_NAMES), flag);
-                        if (it == end(FILE_NAMES))
+                        if (it == end(FILE_NAMES)) {
                             throw invalid_argument("");
+                        }
                         this->castling_rights |= BB_FILES[distance(FILE_NAMES, it)] & backrank;
                     }
                 }
             }
 
-            string _epd_operations(unordered_map<string, optional<variant<string, int, float, Move , vector<Move >>>> operations) {
+            string _epd_operations(const unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>> &operations) const {
                 vector<char> epd;
                 bool first_op = true;
 
                 for (auto [opcode, operand] : operations) {
-                    if (opcode == "-")
+                    if (opcode == "-") {
                         throw "dash (-) is not a valid epd opcode";
-                    if (opcode.find(' ') != string::npos)
-                        throw "invalid character ' ' in epd opcode: '" + opcode + "'";
-                    if (opcode.find('\n') != string::npos)
-                        throw "invalid character '\n' in epd opcode: '" + opcode + "'";
-                    if (opcode.find('\t') != string::npos)
-                        throw "invalid character '\t' in epd opcode: '" + opcode + "'";
-                    if (opcode.find('\r') != string::npos)
-                        throw "invalid character '\r' in epd opcode: '" + opcode + "'";
+                    }
+                    for (char blacklisted : {' ', '\n', '\t', '\r'}) {
+                        if (opcode.find(blacklisted) != string::npos) {
+                            throw "invalid character ' ' in epd opcode: '" + opcode + "'";
+                        }
+                    }
 
-                    if (!first_op)
+                    if (!first_op) {
                         epd.push_back(' ');
+                    }
                     first_op = false;
                     epd.insert(end(epd), begin(opcode), end(opcode));
 
-                    if (operand == nullopt)
+                    if (operand == nullopt) {
                         epd.push_back(';');
-                    else if (holds_alternative<Move >(*operand)) {
+                    } else if (holds_alternative<Move>(*operand)) {
                         epd.push_back(' ');
-                        string san = this->san(get<Move >(*operand));
+                        string san = this->san(get<Move>(*operand));
                         epd.insert(end(epd), begin(san), end(san));
                         epd.push_back(';');
                     } else if (holds_alternative<int>(*operand)) {
                         string s = " " + to_string(get<int>(*operand)) + ";";
                         epd.insert(end(epd), begin(s), end(s));
                     } else if (holds_alternative<float>(*operand)) {
-                        if (!isfinite(get<float>(*operand)))
+                        if (!isfinite(get<float>(*operand))) {
                             throw "expected numeric epd operand to be finite, got: " + to_string(get<float>(*operand));
+                        }
                         string s = " " + to_string(get<float>(*operand)) + ";";
                         epd.insert(end(epd), begin(s), end(s));
-                    } else if (opcode == "pv" && holds_alternative<vector<Move >>(*operand)) {
-                        BoardT *position = this->copy(false);
-                        for (Move move : get<vector<Move >>(*operand)) {
+                    } else if (opcode == "pv" && holds_alternative<vector<Move>>(*operand)) {
+                        BoardT position = this->copy(false);
+                        for (const Move &move : get<vector<Move>>(*operand)) {
                             epd.push_back(' ');
                             string s = position->san_and_push(move);
                             epd.insert(end(epd), begin(s), end(s));
                         }
                         epd.push_back(';');
-                    } else if ((opcode == "am" || opcode == "bm") && holds_alternative<vector<Move >>(*operand)) {
+                    } else if ((opcode == "am" || opcode == "bm") && holds_alternative<vector<Move>>(*operand)) {
                         vector<string> v;
-                        for (Move move : get<vector<Move >>(*operand))
+                        for (const Move &move : get<vector<Move>>(*operand)) {
                             v.push_back(this->san(move));
+                        }
                         sort(begin(v), end(v));
-                        for (string san : v) {
+                        for (const string &san : v) {
                             epd.push_back(' ');
                             epd.insert(end(epd), begin(san), end(san));
                         }
                         epd.push_back(';');
                     } else {
-                        // push_back as escaped string.
+                        // Append as escaped string.
                         string s = " \"";
                         epd.insert(end(epd), begin(s), end(s));
                         s = regex_replace(regex_replace(regex_replace(regex_replace(regex_replace(get<string>(*operand), regex("\\"), "\\\\"), regex("\t"), "\\t"), regex("\r"), "\\r"), regex("\n"), "\\n"), regex("\""), "\\\"");
@@ -4001,163 +4036,147 @@ namespace std {
                 return string(begin(epd), end(epd));
             }
 
-            unordered_map<string, optional<variant<string, int, float, Move , vector<Move >>>> _parse_epd_ops(string operation_part, function<Board ()> make_board) {
-                unordered_map<string, optional<variant<string, int, float, Move , vector<Move >>>> operations;
+            unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>> _parse_epd_ops(const string &operation_part, function<Board()> make_board) const {
+                unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>> operations;
                 string state = "opcode";
                 string opcode = "";
                 string operand = "";
-                optional<BoardT *> position = nullopt;
+                optional<BoardT> position = nullopt;
 
                 vector<optional<char>> v(begin(operation_part), end(operation_part));
                 v.push_back(nullopt);
                 for (optional<char> ch : operation_part) {
                     if (state == "opcode") {
-                        if (*ch == ' ' || *ch == '\t' || *ch == '\r' || *ch == '\n') {
-                            if (opcode == "-")
+                        if (ch && (*ch == ' ' || *ch == '\t' || *ch == '\r' || *ch == '\n')) {
+                            if (opcode == "-") {
                                 opcode = "";
-                            else if (!opcode.empty())
+                            } else if (!opcode.empty()) {
                                 state = "after_opcode";
-                        }
-                        else if (ch == nullopt || *ch == ';') {
-                            if (opcode == "-")
+                            }
+                        } else if (ch == nullopt || *ch == ';') {
+                            if (opcode == "-") {
                                 opcode = "";
-                            else if (!opcode.empty())
-                            {
-                                operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? optional<vector<Move >>() : nullopt;
+                             } else if (!opcode.empty()) {
+                                operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? optional<vector<Move>>() : nullopt;
                                 opcode = "";
                             }
-                        }
-                        else
+                        } else {
                             opcode += *ch;
+                        }
                     } else if (state == "after_opcode") {
-                        if (*ch == ' ' || *ch == '\t' || *ch == '\r' || *ch == '\n')
-                            ;
-                        else if (*ch == '\"')
+                        if (ch && (*ch == ' ' || *ch == '\t' || *ch == '\r' || *ch == '\n')) {
+
+                        } else if (*ch == '\"') {
                             state = "string";
-                        else if (ch == nullopt || *ch == ';') {
-                            if (!opcode.empty())
-                            {
-                                operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? optional<vector<Move >>() : nullopt;
+                        } else if (ch == nullopt || *ch == ';') {
+                            if (!opcode.empty()) {
+                                operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? optional<vector<Move>>() : nullopt;
                                 opcode = "";
                             }
                             state = "opcode";
-                        }
-                        else if (*ch == '+' || *ch == '-' || *ch == '.' || isdigit(*ch)) {
+                        } else if (*ch == '+' || *ch == '-' || *ch == '.' || isdigit(*ch)) {
                             operand = *ch;
                             state = "numeric";
-                        }
-                        else
-                        {
+                        } else {
                             operand = *ch;
                             state = "san";
                         }
                     } else if (state == "numeric") {
                         if (ch == nullopt || *ch == ';') {
-                            if (operand.find('.') != string::npos || operand.find('e') != string::npos || operand.find('E') != string::npos)
-                            {
+                            if (operand.find('.') != string::npos || operand.find('e') != string::npos || operand.find('E') != string::npos) {
                                 float parsed = stof(operand);
-                                if (!isfinite(parsed))
-                                    throw invalid_argument("invalid numeric operand for epd operation " + opcode + ": " + operand);
+                                if (!isfinite(parsed)) {
+                                    throw invalid_argument("invalid numeric operand for epd operation '" + opcode + "': '" + operand + "'");
+                                }
                                 operations[opcode] = parsed;
-                            }
-                            else
+                            } else {
                                 operations[opcode] = stoi(operand);
+                            }
                             opcode = "";
                             operand = "";
                             state = "opcode";
-                        }
-                        else
+                        } else {
                             operand += *ch;
+                        }
                     } else if (state == "string") {
                         if (ch == nullopt || *ch == '\"') {
                             operations[opcode] = operand;
                             opcode = "";
                             operand = "";
                             state = "opcode";
-                        }
-                        else if (*ch == '\\')
+                        } else if (*ch == '\\') {
                             state = "string_escape";
-                        else
+                        } else {
                             operand += *ch;
+                        }
                     } else if (state == "string_escape") {
                         if (ch == nullopt) {
                             operations[opcode] = operand;
                             opcode = "";
                             operand = "";
                             state = "opcode";
-                        }
-                        else if (*ch == 'r') {
+                        } else if (*ch == 'r') {
                             operand += "\r";
                             state = "string";
-                        }
-                        else if (*ch == 'n') {
+                        } else if (*ch == 'n') {
                             operand += "\n";
                             state = "string";
-                        }
-                        else if (*ch == 't') {
+                        } else if (*ch == 't') {
                             operand += "\t";
                             state = "string";
-                        }
-                        else
-                        {
+                        } else {
                             operand += *ch;
                             state = "string";
                         }
                     } else if (state == "san") {
                         if (ch == nullopt || *ch == ';') {
-                            if (position == nullopt)
-                                optional position(make_board());
+                            if (position == nullopt) {
+                                position = make_board();
+                            }
 
-                            if (opcode == "pv")
-                            {
+                            if (opcode == "pv") {
                                 // A variation.
-                                vector<Move > variation;
-                                vector<string> splt;
-                                stringstream ss(operand);
-                                string s;
-                                while (getline(ss, s, ' '))
-                                    splt.push_back(s);
-                                for (string token : splt)
-                                {
-                                    Move move = (*position)->parse_xboard(token);
+                                vector<Move> variation;
+                                istringstream iss(operand);
+                                vector<string> split = {istream_iterator<string>(iss), {}};
+                                for (const string &token : split) {
+                                    Move move = position->parse_xboard(token);
                                     variation.push_back(move);
-                                    (*position)->push(move);
+                                    position->push(move);
                                 }
 
                                 // Reset the position.
-                                while (!(*position)->move_stack.empty())
-                                    (*position)->pop();
+                                while (!position->move_stack.empty()) {
+                                    position->pop();
+                                }
 
                                 operations[opcode] = variation;
-                            }
-                            else if (opcode == "bm" || opcode == "am")
-                            {
+                            } else if (opcode == "bm" || opcode == "am") {
                                 // A set of moves.
-                                vector<string> splt;
-                                stringstream ss(operand);
-                                string s;
-                                while (getline(ss, s, ' '))
-                                    splt.push_back(s);
-                                vector<Move > parsed;
-                                for (string token : splt)
-                                    parsed.push_back((*position)->parse_xboard(token));
+                                istringstream iss(operand);
+                                vector<string> split = {istream_iterator<string>(iss), {}};
+                                vector<Move> parsed;
+                                for (const string &token : split) {
+                                    parsed.push_back(position->parse_xboard(token));
+                                }
                                 operations[opcode] = parsed;
-                            }
-                            else
+                            } else {
                                 // A single move.
-                                operations[opcode] = (*position)->parse_xboard(operand);
+                                operations[opcode] = position->parse_xboard(operand);
+                            }
 
                             opcode = "";
                             operand = "";
                             state = "opcode";
-                        }
-                        else
+                        } else {
                             operand += *ch;
+                        }
                     }
                 }
 
-                if (state != "opcode")
+                if (state != "opcode") {
                     throw;
+                }
                 return operations;
             }
 
@@ -4227,7 +4246,7 @@ namespace std {
                     Bitboard from_mask = this->pieces_mask(*piece_type, this->turn);
                     from_mask &= ~BB_SQUARES[move->from_square];
                     Bitboard to_mask = BB_SQUARES[move->to_square];
-                    for (Move candidate : this->generate_legal_moves(from_mask, to_mask))
+                    for (const Move &candidate : this->generate_legal_moves(from_mask, to_mask))
                         others |= BB_SQUARES[candidate->from_square];
 
                     // Disambiguate.
