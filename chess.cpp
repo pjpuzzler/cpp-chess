@@ -559,7 +559,6 @@ namespace std {
                 return Piece(distance(PIECE_SYMBOLS, it), toupper(symbol));
             }
         };
-
         ostream &operator<<(ostream &os, const Piece &piece) {
             os << "Piece::from_symbol('" << piece.symbol() << "')";
             return os;
@@ -691,7 +690,6 @@ namespace std {
                 return Move(0, 0);
             }
         };
-
         ostream &operator<<(ostream &os, const Move &move) {
             os << "Move::from_uci('" << move.uci() << "')";
             return os;
@@ -1625,7 +1623,6 @@ namespace std {
                 this->promoted = BB_EMPTY;
             }
         };
-
         ostream &operator<<(ostream &os, const BaseBoard &board) {
             os << "BaseBoard('" << board.board_fen() << "')";
             return os;
@@ -4621,18 +4618,18 @@ namespace std {
 
 
         class PseudoLegalMoveGenerator {
+
         public:
             Board board;
-
-            PseudoLegalMoveGenerator(Board board) {
+            PseudoLegalMoveGenerator(const Board &board) {
                 this->board = board;
             }
 
-            operator bool() {
+            operator bool() const {
                 return !this->board.generate_pseudo_legal_moves().empty();
             }
 
-            int count() {
+            int count() const {
                 return this->board.generate_pseudo_legal_moves().size();
             }
 
@@ -4644,8 +4641,7 @@ namespace std {
                 return std::end(this->board.generate_pseudo_legal_moves());
             }
         };
-
-        ostream &operator<<(ostream &os, const PseudoLegalMoveGenerator &pseudo_legal_move_generator) {
+        ostream &operator<<(ostream &os, const PseudoLegalMoveGenerator &pseudo_legal_move_generator) const {
             vector<string> builder;
 
             for (const Move &move : pseudo_legal_move_generator) {
@@ -4665,19 +4661,20 @@ namespace std {
             return os;
         }
 
+
         class LegalMoveGenerator {
+            
         public:
             Board board;
-
-            LegalMoveGenerator(Board board) {
+            LegalMoveGenerator(const Board &board) {
                 this->board = board;
             }
 
-            operator bool() {
+            operator bool() const {
                 return !this->board.generate_legal_moves().empty();
             }
 
-            int count() {
+            int count() const {
                 return this->board.generate_legal_moves().size();
             }
 
@@ -4689,7 +4686,6 @@ namespace std {
                 return std::end(this->board.generate_legal_moves());
             }
         };
-
         ostream &operator<<(ostream &os, const LegalMoveGenerator &legal_move_generator) {
             string sans;
             for (const Move &move : legal_move_generator) {
@@ -4699,6 +4695,7 @@ namespace std {
             os << "<LegalMoveGenerator at " << &legal_move_generator << " (" << sans << ")>";
             return os;
         }
+
 
         typedef variant<long, vector<Square>> IntoSquareSet;
 
@@ -4782,9 +4779,10 @@ namespace std {
             :func:`~chess::SquareSet::symmetric_difference_update()` and
             :func:`~chess::SquareSet::clear()`.
             */
+
         public:
             Bitboard mask;
-
+            vector<Square> iter;
             SquareSet(IntoSquareSet squares = BB_EMPTY) {
                 try {
                     this->mask = get<int>(squares) & BB_ALL; // type: ignore
@@ -4795,60 +4793,124 @@ namespace std {
 
                 // Try squares as an iterable. Not under except clause for nicer
                 // backtraces.
-                for (Square square : get<vector<Square>>(squares)) // type: ignore
+                for (Square square : get<vector<Square>>(squares)) { // type: ignore
                     this->add(square);
+                }
             }
 
             // Set
 
-            vector<Square> iter() {
-                return scan_forward(this->mask);
+            auto begin() const {
+                vector<Square> iter = scan_forward(this->mask);
+                if (this->iter != iter) {
+                    this->iter = iter;
+                }
+                return std::begin(this->iter);
+            }
+
+            auto end() const {
+                vector<Square> iter = scan_forward(this->mask);
+                if (this->iter != iter) {
+                    this->iter = iter;
+                }
+                return std::end(this->iter);
+            }
+
+            size_t size() const {
+                return popcount(this->mask);
             }
 
             // MutableSet
 
-            void add(Square square) {
-                // Adds a square to the set.
+            void add(Square square) const {
+                /* Adds a square to the set. */
                 this->mask |= BB_SQUARES[square];
             }
 
-            void discard(Square square) {
-                // Discards a square from the set.
+            void discard(Square square) const {
+                /* Discards a square from the set. */
                 this->mask &= ~BB_SQUARES[square];
             }
 
+
             // frozenset
 
-            bool isdisjoint(IntoSquareSet other) {
-                // Tests if the square sets are disjoint.
+            bool isdisjoint(IntoSquareSet other) const {
+                /* Tests if the square sets are disjoint. */
                 return !bool(*this & other);
             }
 
-            bool issubset(IntoSquareSet other) {
-                // Tests if this square set is a subset of another.
+
+            bool issubset(IntoSquareSet other) const {
+                /* Tests if this square set is a subset of another. */
                 return !bool(~*this & other);
             }
 
-            bool issuperset(IntoSquareSet other) {
-                // Tests if this square set is a superset of another.
+
+            bool issuperset(IntoSquareSet other) const {
+                /* Tests if this square set is a superset of another. */
                 return !bool(*this & ~SquareSet(other));
             }
 
-            SquareSet *union_(IntoSquareSet other) {
+
+            SquareSet union_(IntoSquareSet other) const {
                 return *this | other;
             }
 
-            SquareSet operator|(IntoSquareSet other) {
+            SquareSet operator|(IntoSquareSet other) const {
                 SquareSet r = SquareSet(other);
                 r.mask |= this->mask;
                 return r;
             }
 
-            SquareSet intersection(IntoSquareSet other) {
+            SquareSet intersection(IntoSquareSet other) const {
                 return *this & other;
             }
-        };
 
+            SquareSet operator&(IntoSquareSet other) const {
+                SquareSet r = SquareSet(other);
+                r.mask &= this->mask;
+                return r;
+            }
+
+            SquareSet difference(IntoSquareSet other) const {
+                return *this - other;
+            }
+
+            SquareSet operator-(IntoSquareSet other) const {
+                SquareSet r = SquareSet(other);
+                r.mask = this->mask & ~r.mask;
+                return r;
+            }
+
+            SquareSet symmetric_difference(IntoSquareSet other) const {
+                return *this ^ other;
+            }
+
+            SquareSet operator^(IntoSquareSet other) const {
+                SquareSet r = SquareSet(other);
+                r.mask ^= this->mask;
+                return r;
+            }
+
+            SquareSet copy() const {
+                return SquareSet(this->mask);
+            }
+
+            // set
+
+            void update(initializer_list<IntoSquareSet> others) const {
+                for (IntoSquareSet other : others) {
+                    *this |= other;
+                }
+            }
+
+            SquareSet &operator|=(IntoSquareSet other) const {
+                this->mask |= SquareSet(other).mask;
+                return *this;
+            }
+            // TODO
+        };
         ostream &operator<<(ostream &os, const SquareSet &square_set) {
             stringstream ss;
             ss << hex << square_set.mask;
@@ -4861,7 +4923,6 @@ namespace std {
             return os;
         }
     }
-
     template <> struct hash<chess::Piece> {
         int operator()(const chess::Piece &piece) const {
             return piece.piece_type + (piece.color ? -1 : 5);
