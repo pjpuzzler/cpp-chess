@@ -926,7 +926,7 @@ namespace std {
                 >>> chess::SquareSet direction = board.pin(chess::WHITE, chess::C3);
                 >>> std::cout << direction;
                 SquareSet(0x0000'0001'0204'0810)
-                >>> std::cout << string(direction);
+                >>> std::cout << std::string(direction);
                 . . . . . . . .
                 . . . . . . . .
                 . . . . . . . .
@@ -3080,7 +3080,6 @@ namespace std {
 
                 >>> #include "chess.cpp"
                 >>> #include <iostream>
-                >>> #include <optional>
                 >>>
                 >>> chess::Board board;
                 >>> std::cout << board.epd(false, "legal", std::nullopt, {{"hmvc", board.halfmove_clock}, {"fmvn", board.fullmove_number}});
@@ -4708,6 +4707,7 @@ namespace std {
             intersections and shifts.
 
             >>> #include "chess.cpp"
+            >>> #include <iostream>
             >>>
             >>> chess::SquareSet squares = chess::SquareSet({chess::A8, chess::A1});
             >>> std::cout << squares;
@@ -4717,7 +4717,7 @@ namespace std {
             >>> std::cout << squares;
             SquareSet(0x0100_0000_0000_00ff)
 
-            >>> std::cout << string(squares);
+            >>> std::cout << std::string(squares);
             1 . . . . . . .
             . . . . . . . .
             . . . . . . . .
@@ -4746,7 +4746,7 @@ namespace std {
             ...     // 6 -- chess::G1
             ...     // 7 -- chess::H1
             ...     // 56 -- chess::A8
-            ...     std::cout << string(square);
+            ...     std::cout << std::string(square);
             >>> }
             0
             1
@@ -4783,17 +4783,17 @@ namespace std {
         public:
             Bitboard mask;
             vector<Square> iter;
-            SquareSet(IntoSquareSet squares = BB_EMPTY) {
+            SquareSet(const IntoSquareSet &squares = BB_EMPTY) {
                 try {
                     this->mask = get<int>(squares) & BB_ALL; // type: ignore
                     return;
                 } catch (bad_variant_access) {
                     this->mask = 0;
                 }
-                // Try squares as an iterable. Not under except clause for nicer
+                // Try squares as an iterable. Not under catch clause for nicer
                 // backtraces.
-                // TODO
-                for (Square square : has_alternative<SquareSet>(squares) ? get<SquareSet>(squares) : get<vector<Square>>(squares)) { // type: ignore
+
+                for (Square square : holds_alternative<SquareSet>(squares) ? get<SquareSet>(squares) : get<vector<Square>>(squares)) { // type: ignore
                     this->add(square);
                 }
             }
@@ -5006,6 +5006,104 @@ namespace std {
 
             bool operator==(const IntoSquareSet &other) const {
                 return this->mask == SquareSet(other).mask;  // type: ignore
+            }
+
+            SquareSet operator<<(int shift) const {
+                return SquareSet((this->mask << shift) & BB_ALL);
+            }
+
+            SquareSet operator>>(int shift) const {
+                return SquareSet(this->mask >> shift);
+            }
+
+            SquareSet operator<<=(int shift) const {
+                this->mask = (this->mask << shift) & BB_ALL;
+                return *this;
+            }
+
+            SquareSet operator>>=(int shift) const {
+                this->mask >>= shift;
+                return *this;
+            }
+
+            SquareSet operator~() const {
+                return SquareSet(~this->mask & BB_ALL);
+            }
+
+            operator long() const {
+                return this->mask;
+            }
+
+            operator string() const {
+                vector<char> builder;
+
+                for (Square square : SQUARES_180) {
+                    Bitboard mask = BB_SQUARES[square];
+                    builder.push_back(this->mask & mask ? '1' : '.');
+
+                    if (!(mask & BB_FILE_H)) {
+                        builder.push_back(' ');
+                    } else if (square != H1) {
+                        builder.push_back('\n');
+                    }
+                }
+
+                return string(begin(builder), end(builder));
+            }
+
+            static SquareSet ray(Square a, Square b) {
+                /*
+                All squares on the rank, file or diagonal with the two squares, if they
+                are aligned.
+
+                >>> #include "chess.cpp"
+                >>> #include <iostream>
+                >>>
+                >>> std::cout << std::string(chess::SquareSet::ray(chess::E2, chess::B5));
+                . . . . . . . .
+                . . . . . . . .
+                1 . . . . . . .
+                . 1 . . . . . .
+                . . 1 . . . . .
+                . . . 1 . . . .
+                . . . . 1 . . .
+                . . . . . 1 . .
+                */
+                return SquareSet(ray(a, b));
+            }
+
+            static SquareSet between(Square a, Square b) {
+                /*
+                All squares on the rank, file or diagonal between the two squares
+                (bounds not included), if they are aligned.
+
+                >>> #include "chess.cpp"
+                >>> #include <iostream>
+                >>>
+                >>> std::cout << std::string(chess::SquareSet::between(chess::E2, chess::B5)));
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . . . . . . .
+                . . 1 . . . . .
+                . . . 1 . . . .
+                . . . . . . . .
+                . . . . . . . .
+                */
+                return SquareSet(between(a, b));
+            }
+
+            static SquareSet from_square(Square square) {
+                /*
+                Creates a :class:`~chess::SquareSet` from a single square.
+
+                >>> #include "chess.cpp"
+                >>> #include <iostream>
+                >>>
+                >>> std::cout << (chess::SquareSet::from_square(chess::A1) == chess::BB_A1);
+                1
+                */
+                return SquareSet(BB_SQUARES[square]);
             }
         };
         ostream &operator<<(ostream &os, const SquareSet &square_set) {
