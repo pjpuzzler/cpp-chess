@@ -1,6 +1,9 @@
 {
     "files.associations": {
         "iterator": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "initializer_list": "cpp",
+        "ios": "cpp",
+        "xiosbase": "cpp"
     }
 }

@@ -21,9 +21,9 @@ and XBoard/UCI engine communication.
 #include <functional>
 #include <optional>
 #include <sstream>
-#include <queue>
 #include <stack>
 #include <variant>
+#include <array>
 
 #include <iostream>
 
@@ -711,7 +711,7 @@ namespace std {
 
         public:
             Bitboard occupied_co[2], pawns, knights, bishops, rooks, queens, kings, promoted, occupied;
-            BaseBoard(optional<string> board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY} {
+            BaseBoard(const optional<string> &board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY} {
                 if (board_fen == nullopt) {
                     this->_clear_board();
                 } else if (*board_fen == STARTING_BOARD_FEN) {
@@ -963,7 +963,7 @@ namespace std {
             }
 
 
-            void set_piece_at(Square square, optional<Piece> piece, bool promoted = false) const {
+            void set_piece_at(Square square, const optional<Piece> &piece, bool promoted = false) const {
                 /*
                 Sets a piece at the given square.
 
@@ -1796,7 +1796,7 @@ namespace std {
             manipulation.
             */
 
-            Board(optional<string> fen = STARTING_FEN, bool chess960 = false) : BaseBoard(nullopt) {
+            Board(const optional<string> &fen = STARTING_FEN, bool chess960 = false) : BaseBoard(nullopt) {
                 this->chess960 = chess960;
 
                 this->ep_square = nullopt;
@@ -1936,7 +1936,7 @@ namespace std {
             }
 
 
-            void set_piece_at(Square square, optional<Piece> piece, bool promoted = false) const {
+            void set_piece_at(Square square, const optional<Piece> &piece, bool promoted = false) const {
                 BaseBoard::set_piece_at(square, piece, promoted);
                 this->clear_stack();
             }
@@ -2157,7 +2157,7 @@ namespace std {
 
                 // Handle castling.
                 if (*piece == KING) {
-                    Move move = this->_from_chess960(this->chess960, move.from_square, move.to_square);
+                    const Move &move = this->_from_chess960(this->chess960, move.from_square, move.to_square);
                     vector<Move> castling_moves = this->generate_castling_moves();
                     if (find(begin(castling_moves), end(castling_moves), move) != end(castling_moves)) {
                         return true;
@@ -4697,7 +4697,7 @@ namespace std {
         }
 
 
-        typedef variant<long, vector<Square>> IntoSquareSet;
+        typedef variant<Bitboard, SquareSet, vector<Square>> IntoSquareSet;
 
         class SquareSet {
             /*
@@ -4793,7 +4793,7 @@ namespace std {
 
                 // Try squares as an iterable. Not under except clause for nicer
                 // backtraces.
-                for (Square square : get<vector<Square>>(squares)) { // type: ignore
+                for (Square square : has_alternative<SquareSet>(squares) ? get<SquareSet>(squares) : get<vector<Square>>(squares)) { // type: ignore
                     this->add(square);
                 }
             }
@@ -4835,59 +4835,59 @@ namespace std {
 
             // frozenset
 
-            bool isdisjoint(IntoSquareSet other) const {
+            bool isdisjoint(const IntoSquareSet &other) const {
                 /* Tests if the square sets are disjoint. */
                 return !bool(*this & other);
             }
 
 
-            bool issubset(IntoSquareSet other) const {
+            bool issubset(const IntoSquareSet &other) const {
                 /* Tests if this square set is a subset of another. */
                 return !bool(~*this & other);
             }
 
 
-            bool issuperset(IntoSquareSet other) const {
+            bool issuperset(const IntoSquareSet &other) const {
                 /* Tests if this square set is a superset of another. */
                 return !bool(*this & ~SquareSet(other));
             }
 
 
-            SquareSet union_(IntoSquareSet other) const {
+            SquareSet union_(const IntoSquareSet &other) const {
                 return *this | other;
             }
 
-            SquareSet operator|(IntoSquareSet other) const {
+            SquareSet operator|(const IntoSquareSet &other) const {
                 SquareSet r = SquareSet(other);
                 r.mask |= this->mask;
                 return r;
             }
 
-            SquareSet intersection(IntoSquareSet other) const {
+            SquareSet intersection(const IntoSquareSet &other) const {
                 return *this & other;
             }
 
-            SquareSet operator&(IntoSquareSet other) const {
+            SquareSet operator&(const IntoSquareSet &other) const {
                 SquareSet r = SquareSet(other);
                 r.mask &= this->mask;
                 return r;
             }
 
-            SquareSet difference(IntoSquareSet other) const {
+            SquareSet difference(const IntoSquareSet &other) const {
                 return *this - other;
             }
 
-            SquareSet operator-(IntoSquareSet other) const {
+            SquareSet operator-(const IntoSquareSet &other) const {
                 SquareSet r = SquareSet(other);
                 r.mask = this->mask & ~r.mask;
                 return r;
             }
 
-            SquareSet symmetric_difference(IntoSquareSet other) const {
+            SquareSet symmetric_difference(const IntoSquareSet &other) const {
                 return *this ^ other;
             }
 
-            SquareSet operator^(IntoSquareSet other) const {
+            SquareSet operator^(const IntoSquareSet &other) const {
                 SquareSet r = SquareSet(other);
                 r.mask ^= this->mask;
                 return r;
@@ -4899,17 +4899,114 @@ namespace std {
 
             // set
 
-            void update(initializer_list<IntoSquareSet> others) const {
-                for (IntoSquareSet other : others) {
+            void update(const initializer_list<IntoSquareSet> &others) const {
+                for (const IntoSquareSet &other : others) {
                     *this |= other;
                 }
             }
 
-            SquareSet &operator|=(IntoSquareSet other) const {
+            SquareSet operator|=(const IntoSquareSet &other) const {
                 this->mask |= SquareSet(other).mask;
                 return *this;
             }
-            // TODO
+            
+            void intersection_update(const initializer_list<IntoSquareSet> &others) const {
+                for (const IntoSquareSet &other : others) {
+                    *this |= other;
+                }
+            }
+
+            SquareSet operator&=(const IntoSquareSet &other) const {
+                this->mask &= SquareSet(other).mask;
+                return *this;
+            }
+
+            void difference_update(const IntoSquareSet &other) const {
+                *this -= other;
+            }
+
+            SquareSet operator-=(const IntoSquareSet &other) const {
+                this->mask &= ~SquareSet(other).mask;
+                return *this;
+            }
+
+            void symmetric_difference_update(const IntoSquareSet &other) const {
+                *this ^= other;
+            }
+
+            SquareSet operator^=(const IntoSquareSet &other) const {
+                this->mask ^= SquareSet(other).mask;
+                return *this;
+            }
+
+            void remove(Square square) const {
+                /*
+                Removes a square from the set.
+
+                :throws: :exc:`std::out_of_range` if the given *square* was not in the set.
+                */
+                Bitboard mask = BB_SQUARES[square];
+                if (this->mask & mask) {
+                    this->mask ^= mask;
+                } else {
+                    throw out_of_range(to_string(square));
+                }
+            }
+
+
+            Square pop() const {
+                /*
+                Removes and returns a square from the set.
+
+                :throws: :exc:`std::out_of_range` if the set is empty.
+                */
+                if (!this->mask) {
+                    throw out_of_range("pop from empty SquareSet");
+                }
+
+                Square square = lsb(this->mask);
+                this->mask &= (this->mask - 1);
+                return square;
+            }
+
+
+            void clear() const {
+                /* Removes all elements from this set. */
+                this->mask = BB_EMPTY;
+            }
+
+
+            // SquareSet
+
+            vector<Bitboard> carry_rippler() const {
+                /* Iterator over the subsets of this set. */
+                return _carry_rippler(this->mask);
+            }
+
+
+            SquareSet mirror() const {
+                /* Returns a vertically mirrored copy of this square set. */
+                return SquareSet(flip_vertical(this->mask));
+            }
+
+
+            array<bool, 64> tolist() const {
+                /* Converts the set to a list of 64 bools. */
+                array<bool, 64> result = {};
+                for (Square square : *this) {
+                    result[square] = true;
+                }
+                return result;
+            }
+
+
+            operator bool() const {
+                return bool(this->mask);
+            }
+
+            bool operator==(const IntoSquareSet &other) const {
+                return this->mask == SquareSet(other).mask;  // type: ignore
+            }
         };
         ostream &operator<<(ostream &os, const SquareSet &square_set) {
             stringstream ss;
