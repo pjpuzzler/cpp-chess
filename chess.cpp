@@ -3158,8 +3158,6 @@ namespace std {
                 }
                 parts.push_back(s.substr(i));
 
-                //TODO
-
                 // Parse ops.
                 if (parts.size() > 4) {
                     string joined;
@@ -3168,16 +3166,30 @@ namespace std {
                         joined += " ";
                     }
                     joined.resize(joined.size() - 1);
-                    auto operations = this->_parse_epd_ops(parts.back(), [&]() -> Board  {return Board(joined + " 0 1");});
+                    auto operations = this->_parse_epd_ops(parts.back(), [&]() -> Board {return Board(joined + " 0 1");});
                     parts.pop_back();
-                    parts.push_back(operations.find("hmvc") != end(operations) ? get<string>(*operations["hmvc"]) : "0");
-                    parts.push_back(operations.find("fmvn") != end(operations) ? get<string>(*operations["fmvn"]) : "1");
-                    joined = "";
-                    for (char c : joined) {
-                        joined += c;
-                        joined += " ";
+                    if (operations.find("hmvc") != end(operations)) {
+                        if (holds_alternative<string>(*operations["hmvc"])) {
+                            joined += " " + get<string>(*operations["hmvc"]);
+                        } else if (holds_alternative<int>(*operations["hmvc"])) {
+                            joined += " " + to_string(get<int>(*operations["hmvc"]));
+                        } else {
+                            joined += " " + to_string(int(get<float>(*operations["hmvc"])));
+                        }
+                    } else {
+                        joined += " 0";
                     }
-                    joined.resize(joined.size() - 1);
+                    if (operations.find("fmvn") != end(operations)) {
+                        if (holds_alternative<string>(*operations["fmvn"])) {
+                            joined += " " + get<string>(*operations["fmvn"]);
+                        } else if (holds_alternative<int>(*operations["fmvn"])) {
+                            joined += " " + to_string(get<int>(*operations["fmvn"]));
+                        } else {
+                            joined += " " + to_string(int(get<float>(*operations["fmvn"])));
+                        }
+                    } else {
+                        joined += " 1"
+                    }
                     this->set_fen(joined);
                     return operations;
                 } else {
@@ -3185,6 +3197,7 @@ namespace std {
                     return {};
                 }
             }
+
 
             string san(const Move &move) const {
                 /*
@@ -3194,7 +3207,8 @@ namespace std {
                 return this->_algebraic(move);
             }
 
-            string lan(const Move &move) {
+
+            string lan(const Move &move) const {
                 /*
                 Gets the long algebraic notation of the given move in the context of
                 the current position.
@@ -3202,7 +3216,8 @@ namespace std {
                 return this->_algebraic(move, true);
             }
 
-            string san_and_push(const Move &move) {
+
+            string san_and_push(const Move &move) const {
                 return this->_algebraic_and_push(move);
             }
 
@@ -3216,7 +3231,7 @@ namespace std {
 
                 :throws: :exc:`std::invalid_argument` if any moves in the sequence are illegal.
                 */
-                BaseBoardTboard = this->copy(false);
+                BaseBoardT = this->copy(false);
                 vector<string> san;
 
                 for (const Move &move : variation) {
@@ -3323,7 +3338,7 @@ namespace std {
                     // Allow fully specified moves, even if they are not pawn moves,
                     // including castling moves.
                     Move move = this->find_move(square(from_file, from_rank), to_square, promotion);
-                    if (!move->promotion && !promotion || *move->promotion == *promotion)
+                    if (!move.promotion && !promotion || *move.promotion == *promotion)
                         return move;
                     else
                         throw invalid_argument("missing promotion piece type: '" + san + "' in " + this->fen());
@@ -3333,7 +3348,7 @@ namespace std {
                 // Match legal moves.
                 optional<Move> matched_move = nullopt;
                 for (const Move &move : this->generate_legal_moves(from_mask, to_mask)) {
-                    if (bool(move->promotion) != bool(promotion) || *move->promotion != *promotion)
+                    if (bool(move.promotion) != bool(promotion) || *move.promotion != *promotion)
                         continue;
 
                     if (matched_move)
@@ -3394,7 +3409,7 @@ namespace std {
                     return move;
 
                 move = this->_to_chess960(move);
-                move = this->_from_chess960(this->chess960, move->from_square, move->to_square, move->promotion, move->drop);
+                move = this->_from_chess960(this->chess960, move.from_square, move.to_square, move.promotion, move.drop);
 
                 if (!this->is_legal(move))
                     throw invalid_argument("illegal uci: '" + uci + "' in " + this->fen());
@@ -3421,7 +3436,7 @@ namespace std {
                     chess960 = this->chess960;
 
                 if (!*chess960 || !this->is_castling(move))
-                    return move->xboard();
+                    return move.xboard();
                 else if (this->is_kingside_castling(move))
                     return "O-O";
                 else
@@ -3456,14 +3471,14 @@ namespace std {
 
             bool is_capture(const Move &move) {
                 // Checks if the given pseudo-legal move is a capture.
-                Bitboard touched = BB_SQUARES[move->from_square] ^ BB_SQUARES[move->to_square];
+                Bitboard touched = BB_SQUARES[move.from_square] ^ BB_SQUARES[move.to_square];
                 return bool(touched & this->occupied_co[!this->turn]) || this->is_en_passant(move);
             }
 
             bool is_zeroing(const Move &move) {
                 // Checks if the given pseudo-legal move is a capture or pawn move.
-                Bitboard touched = BB_SQUARES[move->from_square] ^ BB_SQUARES[move->to_square];
-                return bool(touched & this->pawns || touched & this->occupied_co[!this->turn] || move->drop == PAWN);
+                Bitboard touched = BB_SQUARES[move.from_square] ^ BB_SQUARES[move.to_square];
+                return bool(touched & this->pawns || touched & this->occupied_co[!this->turn] || move.drop == PAWN);
             }
 
             bool is_irreversible(const Move &move) {
@@ -4180,13 +4195,13 @@ namespace std {
                 return operations;
             }
 
-            string _algebraic(Move move, bool long_ = false) {
+            string _algebraic(const Move &move, bool long_ = false) const {
                 string san = this->_algebraic_and_push(move, long_);
                 this->pop();
                 return san;
             }
 
-            string _algebraic_and_push(Move move, bool long_ = false) {
+            string _algebraic_and_push(const Move &move, bool long_ = false) const {
                 string san = this->_algebraic_without_suffix(move, long_);
 
                 // Look ahead for check or checkmate.
@@ -4195,99 +4210,111 @@ namespace std {
                 bool is_checkmate = (is_check && this->is_checkmate()) || this->is_variant_loss() || this->is_variant_win();
 
                 // Add check or checkmate suffix.
-                if (is_checkmate && *move)
+                if (is_checkmate && move) {
                     return san + "#";
-                else if (is_check && *move)
+                } else if (is_check && move) {
                     return san + "+";
-                else
+                } else {
                     return san;
+                }
             }
 
-            string _algebraic_without_suffix(Move move, bool long_ = false) {
+            string _algebraic_without_suffix(Move move, bool long_ = false) const {
                 // Null move.
-                if (!*move)
+                if (!move) {
                     return "--";
+                }
 
-                string san;
                 // Drops.
-                if (move->drop) {
-                    san = "";
-                    if (*move->drop != PAWN)
-                        san = toupper(piece_symbol(move->drop));
-                    san += "@" + SQUARE_NAMES[move->to_square];
+                if (move.drop) {
+                    string san = "";
+                    if (*move.drop != PAWN) {
+                        san = toupper(piece_symbol(*move.drop));
+                    }
+                    san += "@" + SQUARE_NAMES[move.to_square];
                     return san;
                 }
 
                 // Castling.
                 if (this->is_castling(move)) {
-                    if (square_file(move->to_square) < square_file(move->from_square))
+                    if (square_file(move.to_square) < square_file(move.from_square)) {
                         return "O-O-O";
-                    else
+                    } else {
                         return "O-O";
+                    }
                 }
 
-                optional<PieceType> piece_type = this->piece_type_at(move->from_square);
-                if (!piece_type)
-                    throw "san() and lan() expect move to be legal or null, but got " + string(*move) + " in " + this->fen();
+                optional<PieceType> piece_type = this->piece_type_at(move.from_square);
+                if (!piece_type) {
+                    throw "san() and lan() expect move to be legal or null, but got " + string(move) + " in " + this->fen();
+                }
                 bool capture = this->is_capture(move);
 
-                if (*piece_type == PAWN)
-                    san = "";
-                else
-                    san = toupper(piece_symbol(piece_type));
+                string san;
+                if (*piece_type != PAWN) {
+                    san = toupper(piece_symbol(*piece_type));
+                }
 
-                if (long_)
-                    san += SQUARE_NAMES[move->from_square];
-                else if (*piece_type != PAWN) {
+                if (long_) {
+                    san += SQUARE_NAMES[move.from_square];
+                } else if (*piece_type != PAWN) {
                     // Get ambiguous move candidates.
                     // Relevant candidates: not exactly the current move,
                     // but to the same square.
                     Bitboard others = 0;
                     Bitboard from_mask = this->pieces_mask(*piece_type, this->turn);
-                    from_mask &= ~BB_SQUARES[move->from_square];
-                    Bitboard to_mask = BB_SQUARES[move->to_square];
-                    for (const Move &candidate : this->generate_legal_moves(from_mask, to_mask))
-                        others |= BB_SQUARES[candidate->from_square];
+                    from_mask &= ~BB_SQUARES[move.from_square];
+                    Bitboard to_mask = BB_SQUARES[move.to_square];
+                    for (const Move &candidate : this->generate_legal_moves(from_mask, to_mask)) {
+                        others |= BB_SQUARES[candidate.from_square];
+                    }
 
                     // Disambiguate.
                     if (others) {
                         bool row = false, column = false;
 
-                        if (others & BB_RANKS[square_rank(move->from_square)])
+                        if (others & BB_RANKS[square_rank(move.from_square)]) {
                             column = true;
+                        }
 
-                        if (others & BB_FILES[square_file(move->from_square)])
+                        if (others & BB_FILES[square_file(move.from_square)]) {
                             row = true;
-                        else
+                        } else {
                             column = true;
+                        }
 
-                        if (column)
-                            san += FILE_NAMES[square_file(move->from_square)];
-                        if (row)
-                            san += RANK_NAMES[square_rank(move->from_square)];
+                        if (column) {
+                            san += FILE_NAMES[square_file(move.from_square)];
+                        }
+                        if (row) {
+                            san += RANK_NAMES[square_rank(move.from_square)];
+                        }
                     }
-                } else if (capture)
-                    san += FILE_NAMES[square_file(move->from_square)];
+                } else if (capture) {
+                    san += FILE_NAMES[square_file(move.from_square)];
+                }
 
                 // Captures.
-                if (capture)
+                if (capture) {
                     san += "x";
-                else if (long_)
+                } else if (long_) {
                     san += "-";
+                }
 
                 // Destination square.
-                san += SQUARE_NAMES[move->to_square];
+                san += SQUARE_NAMES[move.to_square];
 
                 // Promotion.
-                if (move->promotion)
-                    san += "=" + toupper(piece_symbol(move->promotion));
+                if (move.promotion) {
+                    san += "=" + toupper(piece_symbol(*move.promotion));
+                }
 
                 return san;
             }
 
             bool _reduces_castling_rights(const Move &move) {
                 Bitboard cr = this->clean_castling_rights();
-                Bitboard touched = BB_SQUARES[move->from_square] ^ BB_SQUARES[move->to_square];
+                Bitboard touched = BB_SQUARES[move.from_square] ^ BB_SQUARES[move.to_square];
                 return bool(touched & cr ||
                             cr & BB_RANK_1 && touched & this->kings & this->occupied_co[WHITE] & ~this->promoted ||
                             cr & BB_RANK_8 && touched & this->kings & this->occupied_co[BLACK] & ~this->promoted);
