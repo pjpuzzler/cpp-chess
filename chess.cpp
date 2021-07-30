@@ -234,7 +234,7 @@ namespace std {
         const Square SQUARES_180[] = {square_mirror(0), square_mirror(1), square_mirror(2), square_mirror(3), square_mirror(4), square_mirror(5), square_mirror(6), square_mirror(7), square_mirror(8), square_mirror(9), square_mirror(10), square_mirror(11), square_mirror(12), square_mirror(13), square_mirror(14), square_mirror(15), square_mirror(16), square_mirror(17), square_mirror(18), square_mirror(19), square_mirror(20), square_mirror(21), square_mirror(22), square_mirror(23), square_mirror(24), square_mirror(25), square_mirror(26), square_mirror(27), square_mirror(28), square_mirror(29), square_mirror(30), square_mirror(31), square_mirror(32), square_mirror(33), square_mirror(34), square_mirror(35), square_mirror(36), square_mirror(37), square_mirror(38), square_mirror(39), square_mirror(40), square_mirror(41), square_mirror(42), square_mirror(43), square_mirror(44), square_mirror(45), square_mirror(46), square_mirror(47), square_mirror(48), square_mirror(49), square_mirror(50), square_mirror(51), square_mirror(52), square_mirror(53), square_mirror(54), square_mirror(55), square_mirror(56), square_mirror(57), square_mirror(58), square_mirror(59), square_mirror(60), square_mirror(61), square_mirror(62), square_mirror(63)};
 
 
-        typedef long Bitboard;
+        typedef unsigned long Bitboard;
         const Bitboard BB_EMPTY = 0;
         const Bitboard BB_ALL = 0xffff'ffff'ffff'ffff;
 
@@ -4764,7 +4764,7 @@ namespace std {
             included squares. Bitwise operations can be used to compute unions,
             intersections and shifts.
 
-            >>> std::cout << long(squares);
+            >>> std::cout << (unsigned long)(squares);
             72057594037928191
 
             Also supports common set operations like
@@ -5030,7 +5030,7 @@ namespace std {
                 return SquareSet(~this->mask & BB_ALL);
             }
 
-            operator long() const {
+            operator unsigned long int() const {
                 return this->mask;
             }
 
