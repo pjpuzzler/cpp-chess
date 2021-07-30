@@ -4790,9 +4790,9 @@ namespace std {
                 } catch (bad_variant_access) {
                     this->mask = 0;
                 }
-
                 // Try squares as an iterable. Not under except clause for nicer
                 // backtraces.
+                // TODO
                 for (Square square : has_alternative<SquareSet>(squares) ? get<SquareSet>(squares) : get<vector<Square>>(squares)) { // type: ignore
                     this->add(square);
                 }
