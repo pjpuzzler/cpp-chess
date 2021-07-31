@@ -1,6 +1,7 @@
 /*
-This is a complete remake of niklasf's 'python-chess' in C++
-The original version can be found here: https://github.com/niklasf/python-chess
+This is a line-for-line remake of niklasf's 'python-chess' in C++
+All credit for the original code and algorithms go to niklasf and his credits
+The original source code can be found here: https://github.com/niklasf/python-chess
 */
 
 /*
@@ -599,7 +600,7 @@ namespace std {
                 The UCI representation of a null move is ``0000``.
                 */
                 if (this->drop) {
-                    return toupper(piece_symbol(*this->drop)) + "@" + SQUARE_NAMES[this->to_square];
+                    return to_string(toupper(piece_symbol(*this->drop))) + "@" + SQUARE_NAMES[this->to_square];
                 } else if (this->promotion) {
                     return SQUARE_NAMES[this->from_square] + SQUARE_NAMES[this->to_square] + piece_symbol(*this->promotion);
                 } else if (*this) {
@@ -721,12 +722,12 @@ namespace std {
                 }
             }
 
-            void reset_board() const {
+            void reset_board() {
                 /* Resets pieces to the starting position. */
                 this->_reset_board();
             }
 
-            void clear_board() const {
+            void clear_board() {
                 /* Clears the board. */
                 this->_clear_board();
             }
@@ -952,7 +953,7 @@ namespace std {
             }
 
 
-            optional<Piece> remove_piece_at(Square square) const {
+            optional<Piece> remove_piece_at(Square square) {
                 /*
                 Removes the piece from the given square. Returns the
                 :class:`~chess::Piece` or ``std::nullopt`` if the square was already empty.
@@ -963,7 +964,7 @@ namespace std {
             }
 
 
-            void set_piece_at(Square square, const optional<Piece> &piece, bool promoted = false) const {
+            void set_piece_at(Square square, const optional<Piece> &piece, bool promoted = false) {
                 /*
                 Sets a piece at the given square.
 
@@ -1018,7 +1019,7 @@ namespace std {
             }
 
 
-            void set_board_fen(const string &fen) const {
+            void set_board_fen(const string &fen) {
                 /*
                 Parses *fen* and sets up the board, where *fen* is the board part of
                 a FEN.
@@ -1041,7 +1042,7 @@ namespace std {
             }
 
 
-            void set_piece_map(const unordered_map<Square, Piece> &pieces) const {
+            void set_piece_map(const unordered_map<Square, Piece> &pieces) {
                 /*
                 Sets up the board from a map of :class:`pieces <chess::Piece>`
                 by square index.
@@ -1050,7 +1051,7 @@ namespace std {
             }
 
 
-            void set_chess960_pos(int scharnagl) const {
+            void set_chess960_pos(int scharnagl) {
                 /*
                 Sets up a Chess960 starting position given its index between 0 and 959.
                 Also see :func:`~chess::BaseBoard::from_chess960_pos()`.
@@ -1249,7 +1250,7 @@ namespace std {
                     this->kings == board.kings);
             }
 
-            void apply_transform(const function<Bitboard(Bitboard)> &f) const {
+            void apply_transform(const function<Bitboard(Bitboard)> &f) {
                 this->pawns = f(this->pawns);
                 this->knights = f(this->knights);
                 this->bishops = f(this->bishops);
@@ -1283,7 +1284,7 @@ namespace std {
             }
 
 
-            void apply_mirror() const {
+            void apply_mirror() {
                 this->apply_transform(flip_vertical);
                 swap(this->occupied_co[WHITE], this->occupied_co[BLACK]);
             }
@@ -1306,7 +1307,7 @@ namespace std {
 
             BaseBoardT copy() const {
                 /* Creates a copy of the board. */
-                BaseBoard board = BaseBoard(nullopt);
+                BaseBoardT board = BaseBoardT(nullopt);
 
                 board.pawns = this->pawns;
                 board.knights = this->knights;
@@ -1329,7 +1330,7 @@ namespace std {
                 Creates a new empty board. Also see
                 :func:`~chess::BaseBoard::clear_board()`.
                 */
-                return BaseBoard(nullopt);
+                return BaseBoardT(nullopt);
             }
 
 
@@ -1349,7 +1350,7 @@ namespace std {
                 return board;
             }
         protected:
-            void _reset_board() const {
+            void _reset_board() {
                 this->pawns = BB_RANK_2 | BB_RANK_7;
                 this->knights = BB_B1 | BB_G1 | BB_B8 | BB_G8;
                 this->bishops = BB_C1 | BB_F1 | BB_C8 | BB_F8;
@@ -1365,7 +1366,7 @@ namespace std {
             }
 
 
-            void _clear_board() const {
+            void _clear_board() {
                 this->pawns = BB_EMPTY;
                 this->knights = BB_EMPTY;
                 this->bishops = BB_EMPTY;
@@ -1400,7 +1401,7 @@ namespace std {
                 return attackers & this->occupied_co[color];
             }
 
-            optional<PieceType> _remove_piece_at(Square square) const {
+            optional<PieceType> _remove_piece_at(Square square) {
                 optional<PieceType> piece_type = this->piece_type_at(square);
                 Bitboard mask = BB_SQUARES[square];
 
@@ -1429,7 +1430,7 @@ namespace std {
                 return piece_type;
             }
 
-            void _set_piece_at(Square square, PieceType piece_type, Color color, bool promoted = false) const {
+            void _set_piece_at(Square square, PieceType piece_type, Color color, bool promoted = false) {
                 this->_remove_piece_at(square);
 
                 Bitboard mask = BB_SQUARES[square];
@@ -1458,7 +1459,7 @@ namespace std {
                 }
             }
 
-            void _set_board_fen(const string &fen) const {
+            void _set_board_fen(string fen) {
                 // Compatibility with set_fen().
                 auto it = begin(fen);
                 auto it2 = rbegin(fen);
@@ -1539,14 +1540,14 @@ namespace std {
                 }
             }
 
-            void _set_piece_map(const unordered_map<Square, Piece> &pieces) const {
+            void _set_piece_map(const unordered_map<Square, Piece> &pieces) {
                 this->_clear_board();
                 for (auto [square, piece] : pieces) {
                     this->_set_piece_at(square, piece.piece_type, piece.color);
                 }
             }
 
-            void _set_chess960_pos(int scharnagl) const {
+            void _set_chess960_pos(int scharnagl) {
                 if (!(0 <= scharnagl && scharnagl <= 959)) {
                     throw invalid_argument("chess960 position index not 0 <= '" + to_string(scharnagl) + "' <= 959");
                 }
@@ -1639,8 +1640,7 @@ namespace std {
             Color turn;
             Bitboard castling_rights;
             optional<Square> ep_square;
-            int halfmove_clock;
-            int fullmove_number;
+            int halfmove_clock, fullmove_number;
             _BoardState(const BoardT &board) {
                 this->pawns = board.pawns;
                 this->knights = board.knights;
@@ -1830,7 +1830,7 @@ namespace std {
                 Wraps :func:`~chess::Board::generate_legal_moves()` and
                 :func:`~chess::Board::is_legal()`.
                 */
-                return LegalMoveGenerator(this->generate_legal_moves());
+                return LegalMoveGenerator(*this);
             }
 
             PseudoLegalMoveGenerator pseudo_legal_moves() const {
@@ -1844,10 +1844,10 @@ namespace std {
                 Wraps :func:`~chess::Board::generate_pseudo_legal_moves()` and
                 :func:`~chess::Board::is_pseudo_legal()`.
                 */
-                return PseudoLegalMoveGenerator(this->generate_pseudo_legal_moves());
+                return PseudoLegalMoveGenerator(*this);
             }
 
-            void reset() const {
+            void reset() {
                 /* Restores the starting position. */
                 this->turn = WHITE;
                 this->castling_rights = BB_CORNERS;
@@ -1859,7 +1859,7 @@ namespace std {
             }
 
 
-            void reset_board() const {
+            void reset_board() {
                 /*
                 Resets only pieces to the starting position. Use
                 :func:`~chess::Board::reset()` to fully restore the starting position
@@ -1870,7 +1870,7 @@ namespace std {
             }
 
 
-            void clear() const {
+            void clear() {
                 /*
                 Clears the board.
 
@@ -1890,13 +1890,13 @@ namespace std {
             }
             
 
-            void clear_board() const {
+            void clear_board() {
                 BaseBoard::clear_board();
                 this->clear_stack();
             }
 
 
-            void clear_stack() const {
+            void clear_stack() {
                 /* Clears the move stack. */
                 this->move_stack.clear();
                 this->_stack.clear();
@@ -1906,7 +1906,7 @@ namespace std {
             BoardT root() const {
                 /* Returns a copy of the root position. */
                 if (!this->_stack.empty()) {
-                    Board board = Board(nullopt, this->chess960);
+                    BoardT board = BoardT(nullopt, this->chess960);
                     this->_stack.front().restore(board);
                     return board;
                 } else {
@@ -1929,14 +1929,14 @@ namespace std {
             }
 
 
-            optional<Piece> remove_piece_at(Square square) const {
+            optional<Piece> remove_piece_at(Square square) {
                 optional<Piece> piece = BaseBoard::remove_piece_at(square);
                 this->clear_stack();
                 return piece;
             }
 
 
-            void set_piece_at(Square square, const optional<Piece> &piece, bool promoted = false) const {
+            void set_piece_at(Square square, const optional<Piece> &piece, bool promoted = false) {
                 BaseBoard::set_piece_at(square, piece, promoted);
                 this->clear_stack();
             }
@@ -2082,7 +2082,7 @@ namespace std {
             }
 
 
-            bool gives_check(const Move &move) const {
+            bool gives_check(const Move &move) {
                 /*
                 Probes if the given move would put the opponent in check. The move
                 must be at least pseudo-legal.
@@ -2224,16 +2224,16 @@ namespace std {
             }
 
 
-            bool is_game_over(bool claim_draw = false) const {
+            bool is_game_over(bool claim_draw = false) {
                 return this->outcome(claim_draw) != nullopt;
             }
 
-            string result(bool claim_draw = false) const {
+            string result(bool claim_draw = false) {
                 optional<Outcome> outcome = this->outcome(claim_draw);
                 return outcome ? outcome->result() : "*";
             }
 
-            optional<Outcome> outcome(bool claim_draw = false) const {
+            optional<Outcome> outcome(bool claim_draw = false) {
                 /*
                 Checks if the game is over due to
                 :func:`checkmate <chess::Board::is_checkmate()>`,
@@ -2382,7 +2382,7 @@ namespace std {
             }
 
 
-            bool is_fivefold_repetition() const {
+            bool is_fivefold_repetition() {
                 /*
                 Since the 1st of July 2014 a game is automatically drawn (without
                 a claim by one of the players) if a position occurs for the fifth time.
@@ -2393,7 +2393,7 @@ namespace std {
             }
 
 
-            bool can_claim_draw() const {
+            bool can_claim_draw() {
                 /*
                 Checks if the player to move can claim a draw by the fifty-move rule or
                 by threefold repetition.
@@ -2408,7 +2408,7 @@ namespace std {
                 return this->_is_halfmoves(100);
             }
 
-            bool can_claim_fifty_moves() const {
+            bool can_claim_fifty_moves() {
                 /*
                 Checks if the player to move can claim a draw by the fifty-move rule.
 
@@ -2439,7 +2439,7 @@ namespace std {
             }
 
 
-            bool can_claim_threefold_repetition() const {
+            bool can_claim_threefold_repetition() {
                 /*
                 Checks if the player to move can claim a draw by threefold repetition.
 
@@ -2498,7 +2498,7 @@ namespace std {
             }
 
 
-            bool is_repetition(int count = 3) const {
+            bool is_repetition(int count = 3) {
                 /*
                 Checks if the current position has repeated 3 (or a given number of)
                 times.
@@ -2561,7 +2561,7 @@ namespace std {
             }
 
 
-            void push(const Move &move) const {
+            void push(Move move) {
                 /*
                 Updates the position with the given *move* and puts it onto the
                 move stack.
@@ -2701,7 +2701,7 @@ namespace std {
             }
 
 
-            Move pop() const {
+            Move pop() {
                 /*
                 Restores the previous position and returns the last move from the stack.
 
@@ -2712,7 +2712,7 @@ namespace std {
                 }
                 Move move = this->move_stack.back();
                 this->move_stack.pop_back();
-                this->_stack.back().restore(this);
+                this->_stack.back().restore(*this);
                 this->_stack.pop_back();
                 return move;
             }
@@ -2757,7 +2757,7 @@ namespace std {
             }
 
 
-            string castling_shredder_fen() {
+            string castling_shredder_fen() const {
                 Bitboard castling_rights = this->clean_castling_rights();
                 if (!castling_rights) {
                     return "-";
@@ -2987,7 +2987,7 @@ namespace std {
             }
 
 
-            void set_castling_fen(const string &castling_fen) const {
+            void set_castling_fen(const string &castling_fen) {
                 /*
                 Sets castling rights from a string in FEN notation like ``Qqk``.
 
@@ -2999,19 +2999,19 @@ namespace std {
             }
 
 
-            void set_board_fen(const string &fen) const {
+            void set_board_fen(const string &fen) {
                 BaseBoard::set_board_fen(fen);
                 this->clear_stack();
             }
 
 
-            void set_piece_map(const unordered_map<Square, Piece> &pieces) const {
+            void set_piece_map(const unordered_map<Square, Piece> &pieces) {
                 BaseBoard::set_piece_map(pieces);
                 this->clear_stack();
             }
 
 
-            void set_chess960_pos(int scharnagl) const {
+            void set_chess960_pos(int scharnagl) {
                 BaseBoard::set_chess960_pos(scharnagl);
                 this->chess960 = true;
                 this->turn = WHITE;
@@ -3113,7 +3113,7 @@ namespace std {
             }
 
 
-            unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>> set_epd(const string &epd) const {
+            unordered_map<string, optional<variant<string, int, float, Move , vector<Move>>>> set_epd(const string &epd) {
                 /*
                 Parses the given EPD string and uses it to set the position.
 
@@ -3182,7 +3182,7 @@ namespace std {
                             joined += " " + to_string(int(get<float>(*operations["fmvn"])));
                         }
                     } else {
-                        joined += " 1"
+                        joined += " 1";
                     }
                     this->set_fen(joined);
                     return operations;
@@ -3378,7 +3378,7 @@ namespace std {
             }
 
 
-            Move push_san(const string &san) const {
+            Move push_san(const string &san) {
                 /*
                 Parses a move in standard algebraic notation, makes the move and puts
                 it onto the move stack.
@@ -3438,7 +3438,7 @@ namespace std {
             }
 
 
-            Move push_uci(const string &uci) const {
+            Move push_uci(const string &uci) {
                 /*
                 Parses a move in UCI notation and puts it on the move stack.
 
@@ -3471,7 +3471,7 @@ namespace std {
                 return this->parse_san(xboard);
             }
 
-            Move push_xboard(const string &san) const {
+            Move push_xboard(const string &san) {
                 /*
                 Parses a move in standard algebraic notation, makes the move and puts
                 it onto the move stack.
@@ -4597,7 +4597,7 @@ namespace std {
                 return move;
             }
 
-            auto _transposition_key() const {
+            tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, optional<Square>> _transposition_key() const {
                 return make_tuple(this->pawns, this->knights, this->bishops, this->rooks,
                                   this->queens, this->kings,
                                   this->occupied_co[WHITE], this->occupied_co[BLACK],

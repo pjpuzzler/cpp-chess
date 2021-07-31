@@ -4,6 +4,9 @@
         "vector": "cpp",
         "initializer_list": "cpp",
         "ios": "cpp",
-        "xiosbase": "cpp"
+        "xiosbase": "cpp",
+        "iostream": "cpp",
+        "optional": "cpp",
+        "tuple": "cpp"
     }
 }
