@@ -4,29 +4,16 @@ All credit for the original code and algorithms go to niklasf and his credits
 The original source code can be found here: https://github.com/niklasf/python-chess
 */
 
+/*
+A chess library with move generation and validation,
+and XBoard/UCI engine communication.
+*/
+
 #include "chess.h"
 
 #include <iostream>
 
 namespace chess {
-    std::string __author__ = "Patrick Johnson";
-
-    std::string __email__ = "pjpuzzler@gmail.com";
-
-    std::string __version__ = "1.0.0";
-
-    typedef std::string _EnPassantSpec;
-
-
-    typedef bool Color;
-    const Color COLORS[] = {true, false}, WHITE = true, BLACK = false;
-    const std::string COLOR_NAMES[] = {"black", "white"};
-
-    typedef int PieceType;
-    const PieceType PIECE_TYPES[] = {1, 2, 3, 4, 5, 6}, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
-    const char PIECE_SYMBOLS[] = {'\0', 'p', 'n', 'b', 'r', 'q', 'k'};
-    const std::string PIECE_NAMES[] = {"", "pawn", "knight", "bishop", "rook", "queen", "king"};
-
     char piece_symbol(PieceType piece_type) {
         return PIECE_SYMBOLS[piece_type];
     }
@@ -37,52 +24,6 @@ namespace chess {
     }
 
 
-    const std::unordered_map<char, std::string> UNICODE_PIECE_SYMBOLS = {
-        {'R', "♜"},
-        {'r', "♖"},
-        {'N', "♞"},
-        {'n', "♘"},
-        {'B', "♝"},
-        {'b', "♗"},
-        {'Q', "♛"},
-        {'q', "♕"},
-        {'K', "♚"},
-        {'k', "♔"},
-        {'P', "♟"},
-        {'p', "♙"},
-    };
-
-    const char FILE_NAMES[] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
-
-    const char RANK_NAMES[] = {'1', '2', '3', '4', '5', '6', '7', '8'};
-
-    const std::string STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    /* The FEN for the standard chess starting position. */
-
-    const std::string STARTING_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
-    /* The board part of the FEN for the standard chess starting position. */
-
-
-    const Status STATUS_VALID = Status::VALID;
-    const Status STATUS_NO_WHITE_KING = Status::NO_WHITE_KING;
-    const Status STATUS_NO_BLACK_KING = Status::NO_BLACK_KING;
-    const Status STATUS_TOO_MANY_KINGS = Status::TOO_MANY_KINGS;
-    const Status STATUS_TOO_MANY_WHITE_PAWNS = Status::TOO_MANY_WHITE_PAWNS;
-    const Status STATUS_TOO_MANY_BLACK_PAWNS = Status::TOO_MANY_BLACK_PAWNS;
-    const Status STATUS_PAWNS_ON_BACKRANK = Status::PAWNS_ON_BACKRANK;
-    const Status STATUS_TOO_MANY_WHITE_PIECES = Status::TOO_MANY_WHITE_PIECES;
-    const Status STATUS_TOO_MANY_BLACK_PIECES = Status::TOO_MANY_BLACK_PIECES;
-    const Status STATUS_BAD_CASTLING_RIGHTS = Status::BAD_CASTLING_RIGHTS;
-    const Status STATUS_INVALID_EP_SQUARE = Status::INVALID_EP_SQUARE;
-    const Status STATUS_OPPOSITE_CHECK = Status::OPPOSITE_CHECK;
-    const Status STATUS_EMPTY = Status::EMPTY;
-    const Status STATUS_RACE_CHECK = Status::RACE_CHECK;
-    const Status STATUS_RACE_OVER = Status::RACE_OVER;
-    const Status STATUS_RACE_MATERIAL = Status::RACE_MATERIAL;
-    const Status STATUS_TOO_MANY_CHECKERS = Status::TOO_MANY_CHECKERS;
-    const Status STATUS_IMPOSSIBLE_CHECK = Status::IMPOSSIBLE_CHECK;
-
-
     Outcome::Outcome(Termination termination, std::optional<Color> winner) : termination(termination), winner(winner) {}
 
     std::string Outcome::result() const {
@@ -91,11 +32,6 @@ namespace chess {
     }
 
 
-
-    typedef int Square;
-    const Square SQUARES[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63}, A1 = 0, B1 = 1, C1 = 2, D1 = 3, E1 = 4, F1 = 5, G1 = 6, H1 = 7, A2 = 8, B2 = 9, C2 = 10, D2 = 11, E2 = 12, F2 = 13, G2 = 14, H2 = 15, A3 = 16, B3 = 17, C3 = 18, D3 = 19, E3 = 20, F3 = 21, G3 = 22, H3 = 23, A4 = 24, B4 = 25, C4 = 26, D4 = 27, E4 = 28, F4 = 29, G4 = 30, H4 = 31, A5 = 32, B5 = 33, C5 = 34, D5 = 35, E5 = 36, F5 = 37, G5 = 38, H5 = 39, A6 = 40, B6 = 41, C6 = 42, D6 = 43, E6 = 44, F6 = 45, G6 = 46, H6 = 47, A7 = 48, B7 = 49, C7 = 50, D7 = 51, E7 = 52, F7 = 53, G7 = 54, H7 = 55, A8 = 56, B8 = 57, C8 = 58, D8 = 59, E8 = 60, F8 = 61, G8 = 62, H8 = 63;
-
-    const std::string SQUARE_NAMES[] = {"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"};
 
     Square parse_square(const std::string &name) {
         /*
@@ -150,54 +86,6 @@ namespace chess {
     }
 
 
-    const Square SQUARES_180[] = {square_mirror(0), square_mirror(1), square_mirror(2), square_mirror(3), square_mirror(4), square_mirror(5), square_mirror(6), square_mirror(7), square_mirror(8), square_mirror(9), square_mirror(10), square_mirror(11), square_mirror(12), square_mirror(13), square_mirror(14), square_mirror(15), square_mirror(16), square_mirror(17), square_mirror(18), square_mirror(19), square_mirror(20), square_mirror(21), square_mirror(22), square_mirror(23), square_mirror(24), square_mirror(25), square_mirror(26), square_mirror(27), square_mirror(28), square_mirror(29), square_mirror(30), square_mirror(31), square_mirror(32), square_mirror(33), square_mirror(34), square_mirror(35), square_mirror(36), square_mirror(37), square_mirror(38), square_mirror(39), square_mirror(40), square_mirror(41), square_mirror(42), square_mirror(43), square_mirror(44), square_mirror(45), square_mirror(46), square_mirror(47), square_mirror(48), square_mirror(49), square_mirror(50), square_mirror(51), square_mirror(52), square_mirror(53), square_mirror(54), square_mirror(55), square_mirror(56), square_mirror(57), square_mirror(58), square_mirror(59), square_mirror(60), square_mirror(61), square_mirror(62), square_mirror(63)};
-
-
-    typedef unsigned long Bitboard;
-    const Bitboard BB_EMPTY = 0;
-    const Bitboard BB_ALL = 0xffff'ffff'ffff'ffff;
-
-    const Bitboard BB_SQUARES[] = {
-        1UL << 0, 1UL << 1, 1UL << 2, 1UL << 3, 1UL << 4, 1UL << 5, 1UL << 6, 1UL << 7,
-        1UL << 8, 1UL << 9, 1UL << 10, 1UL << 11, 1UL << 12, 1UL << 13, 1UL << 14, 1UL << 15,
-        1UL << 16, 1UL << 17, 1UL << 18, 1UL << 19, 1UL << 20, 1UL << 21, 1UL << 22, 1UL << 23,
-        1UL << 24, 1UL << 25, 1UL << 26, 1UL << 27, 1UL << 28, 1UL << 29, 1UL << 30, 1UL << 31,
-        1UL << 32, 1UL << 33, 1UL << 34, 1UL << 35, 1UL << 36, 1UL << 37, 1UL << 38, 1UL << 39,
-        1UL << 40, 1UL << 41, 1UL << 42, 1UL << 43, 1UL << 44, 1UL << 45, 1UL << 46, 1UL << 47,
-        1UL << 48, 1UL << 49, 1UL << 50, 1UL << 51, 1UL << 52, 1UL << 53, 1UL << 54, 1UL << 55,
-        1UL << 56, 1UL << 57, 1UL << 58, 1UL << 59, 1UL << 60, 1UL << 61, 1UL << 62, 1UL << 63,
-    }, BB_A1 = 1UL << 0, BB_B1 = 1UL << 1, BB_C1 = 1UL << 2, BB_D1 = 1UL << 3, BB_E1 = 1UL << 4, BB_F1 = 1UL << 5, BB_G1 = 1UL << 6, BB_H1 = 1UL << 7, BB_A2 = 1UL << 8, BB_B2 = 1UL << 9, BB_C2 = 1UL << 10, BB_D2 = 1UL << 11, BB_E2 = 1UL << 12, BB_F2 = 1UL << 13, BB_G2 = 1UL << 14, BB_H2 = 1UL << 15, BB_A3 = 1UL << 16, BB_B3 = 1UL << 17, BB_C3 = 1UL << 18, BB_D3 = 1UL << 19, BB_E3 = 1UL << 20, BB_F3 = 1UL << 21, BB_G3 = 1UL << 22, BB_H3 = 1UL << 23, BB_A4 = 1UL << 24, BB_B4 = 1UL << 25, BB_C4 = 1UL << 26, BB_D4 = 1UL << 27, BB_E4 = 1UL << 28, BB_F4 = 1UL << 29, BB_G4 = 1UL << 30, BB_H4 = 1UL << 31, BB_A5 = 1UL << 32, BB_B5 = 1UL << 33, BB_C5 = 1UL << 34, BB_D5 = 1UL << 35, BB_E5 = 1UL << 36, BB_F5 = 1UL << 37, BB_G5 = 1UL << 38, BB_H5 = 1UL << 39, BB_A6 = 1UL << 40, BB_B6 = 1UL << 41, BB_C6 = 1UL << 42, BB_D6 = 1UL << 43, BB_E6 = 1UL << 44, BB_F6 = 1UL << 45, BB_G6 = 1UL << 46, BB_H6 = 1UL << 47, BB_A7 = 1UL << 48, BB_B7 = 1UL << 49, BB_C7 = 1UL << 50, BB_D7 = 1UL << 51, BB_E7 = 1UL << 52, BB_F7 = 1UL << 53, BB_G7 = 1UL << 54, BB_H7 = 1UL << 55, BB_A8 = 1UL << 56, BB_B8 = 1UL << 57, BB_C8 = 1UL << 58, BB_D8 = 1UL << 59, BB_E8 = 1UL << 60, BB_F8 = 1UL << 61, BB_G8 = 1UL << 62, BB_H8 = 1UL << 63;
-
-    const Bitboard BB_CORNERS = BB_A1 | BB_H1 | BB_A8 | BB_H8;
-    const Bitboard BB_CENTER = BB_D4 | BB_E4 | BB_D5 | BB_E5;
-
-    const Bitboard BB_LIGHT_SQUARES = 0x55aa'55aa'55aa'55aa;
-    const Bitboard BB_DARK_SQUARES = 0xaa55'aa55'aa55'aa55;
-
-    const Bitboard BB_FILES[] = {
-        0x0101'0101'0101'0101UL << 0,
-        0x0101'0101'0101'0101UL << 1,
-        0x0101'0101'0101'0101UL << 2,
-        0x0101'0101'0101'0101UL << 3,
-        0x0101'0101'0101'0101UL << 4,
-        0x0101'0101'0101'0101UL << 5,
-        0x0101'0101'0101'0101UL << 6,
-        0x0101'0101'0101'0101UL << 7,
-    }, BB_FILE_A = 0x0101'0101'0101'0101UL << 0, BB_FILE_B = 0x0101'0101'0101'0101UL << 1, BB_FILE_C = 0x0101'0101'0101'0101UL << 2, BB_FILE_D = 0x0101'0101'0101'0101UL << 3, BB_FILE_E = 0x0101'0101'0101'0101UL << 4, BB_FILE_F = 0x0101'0101'0101'0101UL << 5, BB_FILE_G = 0x0101'0101'0101'0101UL << 6, BB_FILE_H = 0x0101'0101'0101'0101UL << 7;
-
-    const Bitboard BB_RANKS[] = {
-        0xffUL << (8 * 0),
-        0xffUL << (8 * 1),
-        0xffUL << (8 * 2),
-        0xffUL << (8 * 3),
-        0xffUL << (8 * 4),
-        0xffUL << (8 * 5),
-        0xffUL << (8 * 6),
-        0xffUL << (8 * 7),
-    }, BB_RANK_1 = 0xffUL << (8 * 0), BB_RANK_2 = 0xffUL << (8 * 1), BB_RANK_3 = 0xffUL << (8 * 2), BB_RANK_4 = 0xffUL << (8 * 3), BB_RANK_5 = 0xffUL << (8 * 4), BB_RANK_6 = 0xffUL << (8 * 5), BB_RANK_7 = 0xffUL << (8 * 6), BB_RANK_8 = 0xffUL << (8 * 7);
-
-    const Bitboard BB_BACKRANKS = BB_RANK_1 | BB_RANK_8;
-
 
     int lsb(Bitboard bb) {
         return std::bitset<32>(bb & -bb).size() - 1;
@@ -226,8 +114,6 @@ namespace chess {
         }
         return iter;
     }
-
-    std::function<int(Bitboard)> popcount = [](Bitboard bb) -> int {return std::bitset<32>(bb).count();};
 
     Bitboard flip_vertical(Bitboard bb) {
         // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#FlipVertically
@@ -343,11 +229,6 @@ namespace chess {
         return _sliding_attacks(square, BB_ALL, deltas);
     }
 
-    const Bitboard BB_KNIGHT_ATTACKS[] = {_step_attacks(0, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(1, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(2, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(3, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(4, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(5, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(6, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(7, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(8, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(9, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(10, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(11, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(12, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(13, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(14, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(15, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(16, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(17, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(18, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(19, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(20, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(21, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(22, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(23, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(24, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(25, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(26, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(27, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(28, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(29, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(30, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(31, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(32, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(33, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(34, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(35, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(36, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(37, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(38, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(39, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(40, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(41, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(42, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(43, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(44, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(45, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(46, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(47, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(48, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(49, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(50, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(51, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(52, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(53, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(54, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(55, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(56, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(57, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(58, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(59, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(60, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(61, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(62, {17, 15, 10, 6, -17, -15, -10, -6}), _step_attacks(63, {17, 15, 10, 6, -17, -15, -10, -6})};
-    const Bitboard BB_KING_ATTACKS[] = {_step_attacks(0, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(1, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(2, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(3, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(4, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(5, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(6, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(7, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(8, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(9, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(10, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(11, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(12, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(13, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(14, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(15, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(16, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(17, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(18, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(19, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(20, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(21, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(22, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(23, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(24, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(25, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(26, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(27, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(28, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(29, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(30, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(31, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(32, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(33, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(34, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(35, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(36, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(37, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(38, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(39, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(40, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(41, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(42, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(43, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(44, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(45, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(46, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(47, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(48, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(49, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(50, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(51, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(52, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(53, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(54, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(55, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(56, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(57, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(58, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(59, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(60, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(61, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(62, {9, 8, 7, 1, -9, -8, -7, -1}), _step_attacks(63, {9, 8, 7, 1, -9, -8, -7, -1})};
-    const Bitboard BB_PAWN_ATTACKS[][64] = {{_step_attacks(0, {-7, -9}), _step_attacks(1, {-7, -9}), _step_attacks(2, {-7, -9}), _step_attacks(3, {-7, -9}), _step_attacks(4, {-7, -9}), _step_attacks(5, {-7, -9}), _step_attacks(6, {-7, -9}), _step_attacks(7, {-7, -9}), _step_attacks(8, {-7, -9}), _step_attacks(9, {-7, -9}), _step_attacks(10, {-7, -9}), _step_attacks(11, {-7, -9}), _step_attacks(12, {-7, -9}), _step_attacks(13, {-7, -9}), _step_attacks(14, {-7, -9}), _step_attacks(15, {-7, -9}), _step_attacks(16, {-7, -9}), _step_attacks(17, {-7, -9}), _step_attacks(18, {-7, -9}), _step_attacks(19, {-7, -9}), _step_attacks(20, {-7, -9}), _step_attacks(21, {-7, -9}), _step_attacks(22, {-7, -9}), _step_attacks(23, {-7, -9}), _step_attacks(24, {-7, -9}), _step_attacks(25, {-7, -9}), _step_attacks(26, {-7, -9}), _step_attacks(27, {-7, -9}), _step_attacks(28, {-7, -9}), _step_attacks(29, {-7, -9}), _step_attacks(30, {-7, -9}), _step_attacks(31, {-7, -9}), _step_attacks(32, {-7, -9}), _step_attacks(33, {-7, -9}), _step_attacks(34, {-7, -9}), _step_attacks(35, {-7, -9}), _step_attacks(36, {-7, -9}), _step_attacks(37, {-7, -9}), _step_attacks(38, {-7, -9}), _step_attacks(39, {-7, -9}), _step_attacks(40, {-7, -9}), _step_attacks(41, {-7, -9}), _step_attacks(42, {-7, -9}), _step_attacks(43, {-7, -9}), _step_attacks(44, {-7, -9}), _step_attacks(45, {-7, -9}), _step_attacks(46, {-7, -9}), _step_attacks(47, {-7, -9}), _step_attacks(48, {-7, -9}), _step_attacks(49, {-7, -9}), _step_attacks(50, {-7, -9}), _step_attacks(51, {-7, -9}), _step_attacks(52, {-7, -9}), _step_attacks(53, {-7, -9}), _step_attacks(54, {-7, -9}), _step_attacks(55, {-7, -9}), _step_attacks(56, {-7, -9}), _step_attacks(57, {-7, -9}), _step_attacks(58, {-7, -9}), _step_attacks(59, {-7, -9}), _step_attacks(60, {-7, -9}), _step_attacks(61, {-7, -9}), _step_attacks(62, {-7, -9}), _step_attacks(63, {-7, -9})}, {_step_attacks(0, {7, 9}), _step_attacks(1, {7, 9}), _step_attacks(2, {7, 9}), _step_attacks(3, {7, 9}), _step_attacks(4, {7, 9}), _step_attacks(5, {7, 9}), _step_attacks(6, {7, 9}), _step_attacks(7, {7, 9}), _step_attacks(8, {7, 9}), _step_attacks(9, {7, 9}), _step_attacks(10, {7, 9}), _step_attacks(11, {7, 9}), _step_attacks(12, {7, 9}), _step_attacks(13, {7, 9}), _step_attacks(14, {7, 9}), _step_attacks(15, {7, 9}), _step_attacks(16, {7, 9}), _step_attacks(17, {7, 9}), _step_attacks(18, {7, 9}), _step_attacks(19, {7, 9}), _step_attacks(20, {7, 9}), _step_attacks(21, {7, 9}), _step_attacks(22, {7, 9}), _step_attacks(23, {7, 9}), _step_attacks(24, {7, 9}), _step_attacks(25, {7, 9}), _step_attacks(26, {7, 9}), _step_attacks(27, {7, 9}), _step_attacks(28, {7, 9}), _step_attacks(29, {7, 9}), _step_attacks(30, {7, 9}), _step_attacks(31, {7, 9}), _step_attacks(32, {7, 9}), _step_attacks(33, {7, 9}), _step_attacks(34, {7, 9}), _step_attacks(35, {7, 9}), _step_attacks(36, {7, 9}), _step_attacks(37, {7, 9}), _step_attacks(38, {7, 9}), _step_attacks(39, {7, 9}), _step_attacks(40, {7, 9}), _step_attacks(41, {7, 9}), _step_attacks(42, {7, 9}), _step_attacks(43, {7, 9}), _step_attacks(44, {7, 9}), _step_attacks(45, {7, 9}), _step_attacks(46, {7, 9}), _step_attacks(47, {7, 9}), _step_attacks(48, {7, 9}), _step_attacks(49, {7, 9}), _step_attacks(50, {7, 9}), _step_attacks(51, {7, 9}), _step_attacks(52, {7, 9}), _step_attacks(53, {7, 9}), _step_attacks(54, {7, 9}), _step_attacks(55, {7, 9}), _step_attacks(56, {7, 9}), _step_attacks(57, {7, 9}), _step_attacks(58, {7, 9}), _step_attacks(59, {7, 9}), _step_attacks(60, {7, 9}), _step_attacks(61, {7, 9}), _step_attacks(62, {7, 9}), _step_attacks(63, {7, 9})}};
-
-
     Bitboard _edges(Square square) {
         return (((BB_RANK_1 | BB_RANK_8) & ~BB_RANKS[square_rank(square)]) |
                 ((BB_FILE_A | BB_FILE_H) & ~BB_FILES[square_file(square)]));
@@ -386,11 +267,6 @@ namespace chess {
         return {mask_table, attack_table};
     }
 
-    const auto [BB_DIAG_MASKS, BB_DIAG_ATTACKS] = _attack_table({-9, -7, 7, 9});
-    const auto [BB_FILE_MASKS, BB_FILE_ATTACKS] = _attack_table({-8, 8});
-    const auto [BB_RANK_MASKS, BB_RANK_ATTACKS] = _attack_table({-1, 1});
-
-
     std::vector<std::vector<Bitboard>> _rays() {
         std::vector<std::vector<Bitboard>> rays;
         for (int a = 0; a < 64; ++a) {
@@ -413,8 +289,6 @@ namespace chess {
         return rays;
     }
 
-    const std::vector<std::vector<Bitboard>> BB_RAYS = _rays();
-
     Bitboard ray(Square a, Square b) {
         return BB_RAYS[a][b];
     }
@@ -425,12 +299,9 @@ namespace chess {
     }
 
 
-    const std::regex SAN_REGEX(R"(^([NBKRQ])?([a-h])?([1-8])?[\-x]?([a-h][1-8])(=?[nbrqkNBRQK])?[\+#]?$)");
-
-    const std::regex FEN_CASTLING_REGEX(R"(^(?:-|[KQABCDEFGH]{0,2}[kqabcdefgh]{0,2})$)");
-
-
     Piece::Piece(PieceType piece_type, Color color) : piece_type(piece_type), color(color) {}
+
+    Piece::Piece() {}
 
     char Piece::symbol() const {
         /*
@@ -442,7 +313,7 @@ namespace chess {
     }
 
 
-    std::string Piece::unicode_symbol(bool invert_color = false) const {
+    std::string Piece::unicode_symbol(bool invert_color) const {
         /*
         Gets the Unicode character for the piece.
         */
@@ -474,7 +345,7 @@ namespace chess {
 
 
 
-    Move::Move(Square from_square, Square to_square, std::optional<PieceType> promotion = std::nullopt, std::optional<PieceType> drop = std::nullopt) : from_square(from_square), to_square(to_square), promotion(promotion), drop(drop) {}
+    Move::Move(Square from_square, Square to_square, std::optional<PieceType> promotion, std::optional<PieceType> drop) : from_square(from_square), to_square(to_square), promotion(promotion), drop(drop) {}
 
     std::string Move::uci() const {
         /*
@@ -582,7 +453,7 @@ namespace chess {
     }
 
 
-    BaseBoard::BaseBoard(const std::optional<std::string> &board_fen = STARTING_BOARD_FEN) : occupied_co{BB_EMPTY, BB_EMPTY} {
+    BaseBoard::BaseBoard(const std::optional<std::string> &board_fen) : occupied_co{BB_EMPTY, BB_EMPTY} {
         if (board_fen == std::nullopt) {
             this->_clear_board();
         } else if (*board_fen == STARTING_BOARD_FEN) {
@@ -624,13 +495,13 @@ namespace chess {
         return bb & this->occupied_co[color];
     }
 
-    SquareSet BaseBoard::pieces(PieceType piece_type, Color color) const {
+    chess::SquareSet BaseBoard::pieces(PieceType piece_type, Color color) const {
         /*
         Gets pieces of the given type and color.
 
         Returns a :class:`set of squares <chess::SquareSet>`.
         */
-        return SquareSet(this->pieces_mask(piece_type, color));
+        return chess::SquareSet(this->pieces_mask(piece_type, color));
     }
 
     std::optional<Piece> BaseBoard::piece_at(Square square) const {
@@ -717,7 +588,7 @@ namespace chess {
         }
     }
 
-    SquareSet BaseBoard::attacks(Square square) const {
+    chess::SquareSet BaseBoard::attacks(Square square) const {
         /*
         Gets the set of attacked squares from the given square.
 
@@ -726,7 +597,7 @@ namespace chess {
 
         Returns a :class:`set of squares <chess::SquareSet>`.
         */
-        return SquareSet(this->attacks_mask(square));
+        return chess::SquareSet(this->attacks_mask(square));
     }
 
 
@@ -745,7 +616,7 @@ namespace chess {
     }
 
 
-    SquareSet BaseBoard::attackers(Color color, Square square) const {
+    chess::SquareSet BaseBoard::attackers(Color color, Square square) const {
         /*
         Gets the set of attackers of the given color for the given square.
 
@@ -753,7 +624,7 @@ namespace chess {
 
         Returns a :class:`set of squares <chess::SquareSet>`.
         */
-        return SquareSet(this->attackers_mask(color, square));
+        return chess::SquareSet(this->attackers_mask(color, square));
     }
 
 
@@ -783,7 +654,7 @@ namespace chess {
         return BB_ALL;
     }
 
-    SquareSet BaseBoard::pin(Color color, Square square) const {
+    chess::SquareSet BaseBoard::pin(Color color, Square square) const {
         /*
         Detects an absolute pin (and its direction) of the given square to
         the king of the given color.
@@ -811,7 +682,7 @@ namespace chess {
         file or diagonal of the pin. If there is no pin, then a mask of the
         entire board is returned.
         */
-        return SquareSet(this->pin_mask(color, square));
+        return chess::SquareSet(this->pin_mask(color, square));
     }
 
 
@@ -834,7 +705,7 @@ namespace chess {
     }
 
 
-    void BaseBoard::set_piece_at(Square square, const std::optional<Piece> &piece, bool promoted = false) {
+    void BaseBoard::set_piece_at(Square square, const std::optional<Piece> &piece, bool promoted) {
         /*
         Sets a piece at the given square.
 
@@ -849,7 +720,7 @@ namespace chess {
     }
 
 
-    std::string BaseBoard::board_fen(std::optional<bool> promoted = false) const {
+    std::string BaseBoard::board_fen(std::optional<bool> promoted) const {
         /*
         Gets the board FEN (e.g.,
         ``rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR``).
@@ -900,7 +771,7 @@ namespace chess {
     }
 
 
-    std::unordered_map<Square, Piece> BaseBoard::piece_map(Bitboard mask = BB_ALL) const {
+    std::unordered_map<Square, Piece> BaseBoard::piece_map(Bitboard mask) const {
         /*
         Gets a map of :class:`pieces <chess::Piece>` by square index.
         */
@@ -1050,7 +921,7 @@ namespace chess {
         return std::string(std::begin(builder), std::end(builder));
     }
 
-    std::string BaseBoard::unicode(bool invert_color = false, bool borders = false, const std::string &empty_square = "⭘") const {
+    std::string BaseBoard::unicode(bool invert_color, bool borders, const std::string &empty_square) const {
         /*
         Returns a string representation of the board with Unicode pieces.
         Useful for pretty-printing to a terminal.
@@ -1300,7 +1171,7 @@ namespace chess {
         return piece_type;
     }
 
-    void BaseBoard::_set_piece_at(Square square, PieceType piece_type, Color color, bool promoted = false) {
+    void BaseBoard::_set_piece_at(Square square, PieceType piece_type, Color color, bool promoted) {
         this->_remove_piece_at(square);
 
         Bitboard mask = BB_SQUARES[square];
@@ -1541,7 +1412,7 @@ namespace chess {
         board.halfmove_clock = this->halfmove_clock;
         board.fullmove_number = this->fullmove_number;
     }
-    
+
     std::string Board::aliases[6] = {"Standard", "Chess", "Classical", "Normal", "Illegal", "From Position"};
     std::optional<std::string> Board::uci_variant = "chess";
     std::optional<std::string> Board::xboard_variant = "normal";
@@ -1559,7 +1430,7 @@ namespace chess {
     bool Board::one_king = true;
     bool Board::captures_compulsory = false;
 
-    Board::Board(const std::optional<std::string> &fen = STARTING_FEN, bool chess960 = false) : BaseBoard(std::nullopt) {
+    Board::Board(const std::optional<std::string> &fen, bool chess960) : BaseBoard(std::nullopt) {
         this->chess960 = chess960;
 
         this->ep_square = std::nullopt;
@@ -1573,7 +1444,7 @@ namespace chess {
         }
     }
 
-    LegalMoveGenerator Board::legal_moves() const {
+    chess::LegalMoveGenerator Board::legal_moves() const {
         /*
         A dynamic list of legal moves.
 
@@ -1593,10 +1464,10 @@ namespace chess {
         Wraps :func:`~chess::Board::generate_legal_moves()` and
         :func:`~chess::Board::is_legal()`.
         */
-        return LegalMoveGenerator(*this);
+        return chess::LegalMoveGenerator(*this);
     }
 
-    PseudoLegalMoveGenerator Board::pseudo_legal_moves() const {
+    chess::PseudoLegalMoveGenerator Board::pseudo_legal_moves() const {
         /*
         A dynamic list of pseudo-legal moves, much like the legal move list.
 
@@ -1607,7 +1478,7 @@ namespace chess {
         Wraps :func:`~chess::Board::generate_pseudo_legal_moves()` and
         :func:`~chess::Board::is_pseudo_legal()`.
         */
-        return PseudoLegalMoveGenerator(*this);
+        return chess::PseudoLegalMoveGenerator(*this);
     }
 
     void Board::reset() {
@@ -1699,13 +1570,13 @@ namespace chess {
     }
 
 
-    void Board::set_piece_at(Square square, const std::optional<Piece> &piece, bool promoted = false) {
+    void Board::set_piece_at(Square square, const std::optional<Piece> &piece, bool promoted) {
         BaseBoard::set_piece_at(square, piece, promoted);
         this->clear_stack();
     }
 
 
-    std::vector<Move> Board::generate_pseudo_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::generate_pseudo_legal_moves(Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         Bitboard our_pieces = this->occupied_co[this->turn];
 
@@ -1728,7 +1599,7 @@ namespace chess {
         // The remaining moves are all pawn moves.
         Bitboard pawns = this->pawns & this->occupied_co[this->turn] & from_mask;
         if (!pawns) {
-            return;
+            return iter;
         }
 
         // Generate pawn captures.
@@ -1792,7 +1663,7 @@ namespace chess {
         return iter;
     }
 
-    std::vector<Move> Board::generate_pseudo_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::generate_pseudo_legal_ep(Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         if (!this->ep_square || !(BB_SQUARES[*this->ep_square] & to_mask)) {
             return iter;
@@ -1813,7 +1684,7 @@ namespace chess {
         return iter;
     }
 
-    std::vector<Move> Board::generate_pseudo_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::generate_pseudo_legal_captures(Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         for (const Move &move : this->generate_pseudo_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn])) {
             iter.push_back(move);
@@ -1829,13 +1700,13 @@ namespace chess {
         return king == std::nullopt ? BB_EMPTY : this->attackers_mask(!this->turn, *king);
     }
 
-    SquareSet Board::checkers() const {
+    chess::SquareSet Board::checkers() const {
         /*
         Gets the pieces currently giving check.
 
         Returns a :class:`set of squares <chess::SquareSet>`.
         */
-        return SquareSet(this->checkers_mask());
+        return chess::SquareSet(this->checkers_mask());
     }
 
 
@@ -1851,10 +1722,9 @@ namespace chess {
         must be at least pseudo-legal.
         */
         this->push(move);
-        try {
-            return this->is_check();
-        } catch (...) {}
+        bool is_check = this->is_check();
         this->pop();
+        return is_check;
     }
 
 
@@ -1879,7 +1749,7 @@ namespace chess {
         return king != std::nullopt && this->is_attacked_by(this->turn, *king);
     }
 
-    bool Board::is_pseudo_legal(const Move &move) const {
+    bool Board::is_pseudo_legal(Move move) const {
         // Null moves are not pseudo-legal.
         if (!move) {
             return false;
@@ -1920,7 +1790,7 @@ namespace chess {
 
         // Handle castling.
         if (*piece == KING) {
-            const Move &move = this->_from_chess960(this->chess960, move.from_square, move.to_square);
+            move = this->_from_chess960(this->chess960, move.from_square, move.to_square);
             std::vector<Move> castling_moves = this->generate_castling_moves();
             if (std::find(std::begin(castling_moves), std::end(castling_moves), move) != std::end(castling_moves)) {
                 return true;
@@ -1987,16 +1857,16 @@ namespace chess {
     }
 
 
-    bool Board::is_game_over(bool claim_draw = false) {
+    bool Board::is_game_over(bool claim_draw) {
         return this->outcome(claim_draw) != std::nullopt;
     }
 
-    std::string Board::result(bool claim_draw = false) {
+    std::string Board::result(bool claim_draw) {
         std::optional<Outcome> outcome = this->outcome(claim_draw);
         return outcome ? outcome->result() : "*";
     }
 
-    std::optional<Outcome> Board::outcome(bool claim_draw = false) {
+    std::optional<Outcome> Board::outcome(bool claim_draw) {
         /*
         Checks if the game is over due to
         :func:`checkmate <chess::Board::is_checkmate()>`,
@@ -2188,12 +2058,11 @@ namespace chess {
             for (const Move &move : this->generate_legal_moves()) {
                 if (!this->is_zeroing(move)) {
                     this->push(move);
-                    try {
-                        if (this->is_fifty_moves()) {
-                            return true;
-                        }
-                    } catch (...) {}
+                    bool is_fifty_moves = this->is_fifty_moves();
                     this->pop();
+                    if (this->is_fifty_moves()) {
+                        return true;
+                    }
                 }
             }
         }
@@ -2249,19 +2118,18 @@ namespace chess {
         // The next legal move is a threefold repetition.
         for (const Move &move : this->generate_legal_moves()) {
             this->push(move);
-            try {
-                if (transpositions.at(this->_transposition_key()) >= 2) {
-                    return true;
-                }
-            } catch (...) {}
+            bool flag = transpositions.at(this->_transposition_key()) >= 2;
             this->pop();
+            if (flag) {
+                return true;
+            }
         }
 
         return false;
     }
 
 
-    bool Board::is_repetition(int count = 3) {
+    bool Board::is_repetition(int count) {
         /*
         Checks if the current position has repeated 3 (or a given number of)
         times.
@@ -2293,34 +2161,34 @@ namespace chess {
         auto transposition_key = this->_transposition_key();
         std::stack<Move> switchyard;
 
-        try {
-            while (true) {
-                if (count <= 1) {
-                    return true;
-                }
-
-                if (this->move_stack.size() < count - 1) {
-                    break;
-                }
-
-                Move move = this->pop();
-                switchyard.push(move);
-
-                if (this->is_irreversible(move)) {
-                    break;
-                }
-
-                if (this->_transposition_key() == transposition_key) {
-                    --count;
-                }
+        bool flag = false;
+        while (true) {
+            if (count <= 1) {
+                flag = true;
+                break;
             }
-        } catch (...) {}
+
+            if (this->move_stack.size() < count - 1) {
+                break;
+            }
+
+            Move move = this->pop();
+            switchyard.push(move);
+
+            if (this->is_irreversible(move)) {
+                break;
+            }
+
+            if (this->_transposition_key() == transposition_key) {
+                --count;
+            }
+        }
         while (!switchyard.empty()) {
             this->push(switchyard.top());
             switchyard.pop();
         }
 
-        return false;
+        return flag;
     }
 
 
@@ -2494,7 +2362,7 @@ namespace chess {
     }
 
 
-    Move Board::find_move(Square from_square, Square to_square, std::optional<PieceType> promotion = std::nullopt) {
+    Move Board::find_move(Square from_square, Square to_square, std::optional<PieceType> promotion) {
         /*
         Finds a matching legal move for an origin square, a target square, and
         an optional promotion piece type.
@@ -2586,7 +2454,7 @@ namespace chess {
         return this->ep_square != std::nullopt && !this->generate_legal_ep().empty();
     }
 
-    std::string Board::fen(bool shredder = false, _EnPassantSpec en_passant = "legal", std::optional<bool> promoted = std::nullopt) {
+    std::string Board::fen(bool shredder, _EnPassantSpec en_passant, std::optional<bool> promoted) {
         /*
         Gets a FEN representation of the position.
 
@@ -2615,7 +2483,7 @@ namespace chess {
         return this->epd(shredder, en_passant, promoted) + " " + std::to_string(this->halfmove_clock) + " " + std::to_string(this->fullmove_number);
     }
 
-    std::string Board::shredder_fen(_EnPassantSpec en_passant = "legal", std::optional<bool> promoted = std::nullopt) {
+    std::string Board::shredder_fen(_EnPassantSpec en_passant, std::optional<bool> promoted) {
         return this->epd(true, en_passant, promoted) + " " + std::to_string(this->halfmove_clock) + " " + std::to_string(this->fullmove_number);
     }
 
@@ -2787,7 +2655,7 @@ namespace chess {
     }
 
 
-    std::optional<int> Board::chess960_pos(bool ignore_turn = false, bool ignore_castling = false, bool ignore_counters = true) const {
+    std::optional<int> Board::chess960_pos(bool ignore_turn, bool ignore_castling, bool ignore_counters) const {
         /*
         Gets the Chess960 starting position index between 0 and 956,
         or ``std::nullopt`` if the current position is not a Chess960 starting
@@ -2823,7 +2691,7 @@ namespace chess {
     }
 
 
-    std::string Board::epd(bool shredder = false, const _EnPassantSpec &en_passant = "legal", std::optional<bool> promoted = std::nullopt, const std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>> &operations = {}) {
+    std::string Board::epd(bool shredder, const _EnPassantSpec &en_passant, std::optional<bool> promoted, const std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>> &operations) {
         /*
         Gets an EPD representation of the current position.
 
@@ -2997,9 +2865,9 @@ namespace chess {
             }
 
             if (board.turn == WHITE) {
-                san.push_back(board.fullmove_number + ". " + board.san_and_push(move));
+                san.push_back(std::to_string(board.fullmove_number) + ". " + board.san_and_push(move));
             } else if (san.empty()) {
-                san.push_back(board.fullmove_number + "..." + board.san_and_push(move));
+                san.push_back(std::to_string(board.fullmove_number) + "..." + board.san_and_push(move));
             } else {
                 san.push_back(board.san_and_push(move));
             }
@@ -3072,7 +2940,7 @@ namespace chess {
         std::string p = match[5].str();
         std::optional<PieceType> promotion;
         if (!p.empty()) {
-            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(p.back()));
+            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(p.front()));
             if (it == std::end(PIECE_SYMBOLS)) {
                 throw std::invalid_argument("");
             }
@@ -3085,7 +2953,7 @@ namespace chess {
         int from_file;
         Bitboard from_mask = BB_ALL;
         if (!match[2].str().empty()) {
-            auto it = std::find(std::begin(FILE_NAMES), std::end(FILE_NAMES), match[2].str());
+            auto it = std::find(std::begin(FILE_NAMES), std::end(FILE_NAMES), match[2].str().front());
             if (it == std::end(FILE_NAMES)) {
                 throw std::invalid_argument("");
             }
@@ -3156,7 +3024,7 @@ namespace chess {
     }
 
 
-    std::string Board::uci(Move move, std::optional<bool> chess960 = std::nullopt) const {
+    std::string Board::uci(Move move, std::optional<bool> chess960) const {
         /*
         Gets the UCI notation of the move.
 
@@ -3216,7 +3084,7 @@ namespace chess {
     }
 
 
-    std::string Board::xboard(const Move &move, std::optional<bool> chess960 = std::nullopt) const {
+    std::string Board::xboard(const Move &move, std::optional<bool> chess960) const {
         if (chess960 == std::nullopt) {
             chess960 = this->chess960;
         }
@@ -3580,7 +3448,7 @@ namespace chess {
     }
 
 
-    std::vector<Move> Board::generate_legal_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::generate_legal_moves(Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         if (this->is_variant_end()) {
             return iter;
@@ -3612,7 +3480,7 @@ namespace chess {
         return iter;
     }
 
-    std::vector<Move> Board::generate_legal_ep(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::generate_legal_ep(Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         if (this->is_variant_end()) {
             return iter;
@@ -3626,7 +3494,7 @@ namespace chess {
         return iter;
     }
 
-    std::vector<Move> Board::generate_legal_captures(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::generate_legal_captures(Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         for (const Move &move : this->generate_legal_moves(from_mask, to_mask & this->occupied_co[!this->turn])) {
             iter.push_back(move);
@@ -3637,7 +3505,7 @@ namespace chess {
         return iter;
     }
 
-    std::vector<Move> Board::generate_castling_moves(Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::generate_castling_moves(Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         if (this->is_variant_end()) {
             return iter;
@@ -3717,7 +3585,7 @@ namespace chess {
     }
 
 
-    Board Board::copy(std::variant<bool, int> stack = true) const {
+    Board Board::copy(std::variant<bool, int> stack) const {
         /*
         Creates a copy of the board.
 
@@ -3743,13 +3611,13 @@ namespace chess {
     }
 
 
-    Board Board::empty(bool chess960 = false) {
+    Board Board::empty(bool chess960) {
         /* Creates a new empty board. Also see :func:`~chess::Board::clear()`. */
         return Board(std::nullopt, chess960);
     }
 
 
-    std::tuple<Board, std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>>> Board::from_epd(const std::string &epd, bool chess960 = false) {
+    std::tuple<Board, std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>>> Board::from_epd(const std::string &epd, bool chess960) {
         /*
         Creates a new board from an EPD string. See
         :func:`~chess::Board::set_epd()`.
@@ -4036,13 +3904,13 @@ namespace chess {
         return operations;
     }
 
-    std::string Board::_algebraic(const Move &move, bool long_ = false) {
+    std::string Board::_algebraic(const Move &move, bool long_) {
         std::string san = this->_algebraic_and_push(move, long_);
         this->pop();
         return san;
     }
 
-    std::string Board::_algebraic_and_push(const Move &move, bool long_ = false) {
+    std::string Board::_algebraic_and_push(const Move &move, bool long_) {
         std::string san = this->_algebraic_without_suffix(move, long_);
 
         // Look ahead for check or checkmate.
@@ -4060,7 +3928,7 @@ namespace chess {
         }
     }
 
-    std::string Board::_algebraic_without_suffix(const Move &move, bool long_ = false) {
+    std::string Board::_algebraic_without_suffix(const Move &move, bool long_) {
         // Null move.
         if (!move) {
             return "--";
@@ -4147,7 +4015,7 @@ namespace chess {
 
         // Promotion.
         if (move.promotion) {
-            san += "=" + toupper(piece_symbol(*move.promotion));
+            san += "=" + std::string(1, toupper(piece_symbol(*move.promotion)));
         }
 
         return san;
@@ -4267,12 +4135,12 @@ namespace chess {
             return bool(this->pin_mask(this->turn, move.from_square) & BB_SQUARES[move.to_square] &&
                         !this->_ep_skewered(king, move.from_square));
         } else {
-            return bool(!blockers & BB_SQUARES[move.from_square] ||
+            return bool(!(blockers & BB_SQUARES[move.from_square]) ||
                         ray(move.from_square, move.to_square) & BB_SQUARES[king]);
         }
     }
 
-    std::vector<Move> Board::_generate_evasions(Square king, Bitboard checkers, Bitboard from_mask = BB_ALL, Bitboard to_mask = BB_ALL) const {
+    std::vector<Move> Board::_generate_evasions(Square king, Bitboard checkers, Bitboard from_mask, Bitboard to_mask) const {
         std::vector<Move> iter;
         Bitboard sliders = checkers & (this->bishops | this->rooks | this->queens);
 
@@ -4319,7 +4187,7 @@ namespace chess {
         return false;
     }
 
-    Move Board::_from_chess960(bool chess960, Square from_square, Square to_square, std::optional<PieceType> promotion = std::nullopt, std::optional<PieceType> drop = std::nullopt) const {
+    Move Board::_from_chess960(bool chess960, Square from_square, Square to_square, std::optional<PieceType> promotion, std::optional<PieceType> drop) const {
         if (!chess960 && promotion == std::nullopt && drop == std::nullopt) {
             if (from_square == E1 && this->kings & BB_E1) {
                 if (to_square == H1) {
@@ -4376,32 +4244,38 @@ namespace chess {
 
 
     PseudoLegalMoveGenerator::PseudoLegalMoveGenerator(const Board &board) {
-        this->board = board;
+        this->_board = board;
+        this->_iter = this->_board.generate_pseudo_legal_moves();
     }
 
     PseudoLegalMoveGenerator::operator bool() const {
-        return !this->board.generate_pseudo_legal_moves().empty();
+        return !this->_iter.empty();
     }
 
     int PseudoLegalMoveGenerator::count() const {
-        return this->board.generate_pseudo_legal_moves().size();
+        return this->_iter.size();
     }
 
     auto PseudoLegalMoveGenerator::begin() const {
-        return std::begin(this->board.generate_pseudo_legal_moves());
+        return std::begin(this->_iter);
     }
 
     auto PseudoLegalMoveGenerator::end() const {
-        return std::end(this->board.generate_pseudo_legal_moves());
+        return std::end(this->_iter);
     }
+
+    Board PseudoLegalMoveGenerator::get_board() const {
+        return this->_board;
+    }
+
     std::ostream &operator<<(std::ostream &os, PseudoLegalMoveGenerator pseudo_legal_move_generator) {
         std::vector<std::string> builder;
 
         for (const Move &move : pseudo_legal_move_generator) {
-            if (pseudo_legal_move_generator.board.is_legal(move)) {
-                builder.push_back(pseudo_legal_move_generator.board.san(move));
+            if (pseudo_legal_move_generator.get_board().is_legal(move)) {
+                builder.push_back(pseudo_legal_move_generator.get_board().san(move));
             } else {
-                builder.push_back(pseudo_legal_move_generator.board.uci(move));
+                builder.push_back(pseudo_legal_move_generator.get_board().uci(move));
             }
         }
 
@@ -4416,28 +4290,34 @@ namespace chess {
 
 
     LegalMoveGenerator::LegalMoveGenerator(const Board &board) {
-        this->board = board;
+        this->_board = board;
+        this->_iter = board.generate_legal_moves();
     }
 
     LegalMoveGenerator::operator bool() const {
-        return !this->board.generate_legal_moves().empty();
+        return !this->_iter.empty();
     }
 
     int LegalMoveGenerator::count() const {
-        return this->board.generate_legal_moves().size();
+        return this->_iter.size();
     }
 
     auto LegalMoveGenerator::begin() const {
-        return std::begin(this->board.generate_legal_moves());
+        return std::begin(this->_iter);
     }
 
     auto LegalMoveGenerator::end() const {
-        return std::end(this->board.generate_legal_moves());
+        return std::end(this->_iter);
     }
+
+    Board LegalMoveGenerator::get_board() const {
+        return this->_board;
+    }
+
     std::ostream &operator<<(std::ostream &os, LegalMoveGenerator legal_move_generator) {
         std::string sans;
         for (const Move &move : legal_move_generator) {
-            sans += legal_move_generator.board.san(move) + ", ";
+            sans += legal_move_generator.get_board().san(move) + ", ";
         }
         sans.resize(sans.size() - 2);
         os << "<LegalMoveGenerator at " << &legal_move_generator << " (" << sans << ")>";
@@ -4445,15 +4325,13 @@ namespace chess {
     }
 
 
-    typedef std::variant<Bitboard, SquareSet, std::vector<Square>> IntoSquareSet;
-
-    SquareSet::SquareSet(const IntoSquareSet &squares = BB_EMPTY) {
+    SquareSet::SquareSet(const IntoSquareSet &squares) {
         try {
-            this->mask = std::get<int>(squares) & BB_ALL;
-            this->iter = scan_forward(this->mask);
+            this->_mask = std::get<Bitboard>(squares) & BB_ALL;
+            this->_iter = scan_forward(this->_mask);
             return;
         } catch (std::bad_variant_access) {
-            this->mask = 0;
+            this->_mask = 0;
         }
         // Try squares as an iterable. Not under catch clause for nicer
         // backtraces.
@@ -4471,36 +4349,30 @@ namespace chess {
 
     // Set
 
-    auto SquareSet::begin() const {
-        if (this->iter != scan_forward(this->mask)) {
-            throw std::invalid_argument("cannot set mask outside of initialization");
-        }
-        return std::begin(this->iter);
+    std::vector<Square>::const_iterator SquareSet::begin() const {
+        return std::begin(this->_iter);
     }
 
-    auto SquareSet::end() const {
-        if (this->iter != scan_forward(this->mask)) {
-            throw std::invalid_argument("cannot set mask outside of initialization");
-        }
-        return std::end(this->iter);
+    std::vector<Square>::const_iterator SquareSet::end() const {
+        return std::end(this->_iter);
     }
 
     size_t SquareSet::size() const {
-        return popcount(this->mask);
+        return popcount(this->_mask);
     }
 
     // MutableSet
 
     void SquareSet::add(Square square) {
         /* Adds a square to the set. */
-        this->mask |= BB_SQUARES[square];
-        this->iter = scan_forward(this->mask);
+        this->_mask |= BB_SQUARES[square];
+        this->_iter = scan_forward(this->_mask);
     }
 
     void SquareSet::discard(Square square) {
         /* Discards a square from the set. */
-        this->mask &= ~BB_SQUARES[square];
-        this->iter = scan_forward(this->mask);
+        this->_mask &= ~BB_SQUARES[square];
+        this->_iter = scan_forward(this->_mask);
     }
 
 
@@ -4530,7 +4402,7 @@ namespace chess {
 
     SquareSet SquareSet::operator|(const IntoSquareSet &other) const {
         SquareSet r = SquareSet(other);
-        r.mask |= this->mask;
+        r._mask |= this->_mask;
         return r;
     }
 
@@ -4540,7 +4412,7 @@ namespace chess {
 
     SquareSet SquareSet::operator&(const IntoSquareSet &other) const {
         SquareSet r = SquareSet(other);
-        r.mask &= this->mask;
+        r._mask &= this->_mask;
         return r;
     }
 
@@ -4550,7 +4422,7 @@ namespace chess {
 
     SquareSet SquareSet::operator-(const IntoSquareSet &other) const {
         SquareSet r = SquareSet(other);
-        r.mask = this->mask & ~r.mask;
+        r._mask = this->_mask & ~r._mask;
         return r;
     }
 
@@ -4560,12 +4432,12 @@ namespace chess {
 
     SquareSet SquareSet::operator^(const IntoSquareSet &other) const {
         SquareSet r = SquareSet(other);
-        r.mask ^= this->mask;
+        r._mask ^= this->_mask;
         return r;
     }
 
     SquareSet SquareSet::copy() const {
-        return SquareSet(this->mask);
+        return SquareSet(this->_mask);
     }
 
     // set
@@ -4577,8 +4449,8 @@ namespace chess {
     }
 
     SquareSet SquareSet::operator|=(const IntoSquareSet &other) {
-        this->mask |= SquareSet(other).mask;
-        this->iter = scan_forward(this->mask);
+        this->_mask |= SquareSet(other)._mask;
+        this->_iter = scan_forward(this->_mask);
         return *this;
     }
     
@@ -4589,8 +4461,8 @@ namespace chess {
     }
 
     SquareSet SquareSet::operator&=(const IntoSquareSet &other) {
-        this->mask &= SquareSet(other).mask;
-        this->iter = scan_forward(this->mask);
+        this->_mask &= SquareSet(other)._mask;
+        this->_iter = scan_forward(this->_mask);
         return *this;
     }
 
@@ -4599,8 +4471,8 @@ namespace chess {
     }
 
     SquareSet SquareSet::operator-=(const IntoSquareSet &other) {
-        this->mask &= ~SquareSet(other).mask;
-        this->iter = scan_forward(this->mask);
+        this->_mask &= ~SquareSet(other)._mask;
+        this->_iter = scan_forward(this->_mask);
         return *this;
     }
 
@@ -4609,8 +4481,8 @@ namespace chess {
     }
 
     SquareSet SquareSet::operator^=(const IntoSquareSet &other) {
-        this->mask ^= SquareSet(other).mask;
-        this->iter = scan_forward(this->mask);
+        this->_mask ^= SquareSet(other)._mask;
+        this->_iter = scan_forward(this->_mask);
         return *this;
     }
 
@@ -4621,9 +4493,9 @@ namespace chess {
         :throws: :exc:`std::out_of_range` if the given *square* was not in the set.
         */
         Bitboard mask = BB_SQUARES[square];
-        if (this->mask & mask) {
-            this->mask ^= mask;
-            this->iter = scan_forward(this->mask);
+        if (this->_mask & mask) {
+            this->_mask ^= mask;
+            this->_iter = scan_forward(this->_mask);
         } else {
             throw std::out_of_range(std::to_string(square));
         }
@@ -4636,21 +4508,21 @@ namespace chess {
 
         :throws: :exc:`std::out_of_range` if the set is empty.
         */
-        if (!this->mask) {
+        if (!this->_mask) {
             throw std::out_of_range("pop from empty SquareSet");
         }
 
-        Square square = lsb(this->mask);
-        this->mask &= (this->mask - 1);
-        this->iter = scan_forward(this->mask);
+        Square square = lsb(this->_mask);
+        this->_mask &= (this->_mask - 1);
+        this->_iter = scan_forward(this->_mask);
         return square;
     }
 
 
     void SquareSet::clear() {
         /* Removes all elements from this set. */
-        this->mask = BB_EMPTY;
-        this->iter = scan_forward(this->mask);
+        this->_mask = BB_EMPTY;
+        this->_iter = scan_forward(this->_mask);
     }
 
 
@@ -4658,13 +4530,13 @@ namespace chess {
 
     std::vector<Bitboard> SquareSet::carry_rippler() const {
         /* Iterator over the subsets of this set. */
-        return _carry_rippler(this->mask);
+        return _carry_rippler(this->_mask);
     }
 
 
     SquareSet SquareSet::mirror() const {
         /* Returns a vertically mirrored copy of this square set. */
-        return SquareSet(flip_vertical(this->mask));
+        return SquareSet(flip_vertical(this->_mask));
     }
 
 
@@ -4679,39 +4551,39 @@ namespace chess {
 
 
     SquareSet::operator bool() const {
-        return bool(this->mask);
+        return bool(this->_mask);
     }
 
     bool SquareSet::operator==(const IntoSquareSet &other) const {
-        return this->mask == SquareSet(other).mask;  // type: ignore
+        return this->_mask == SquareSet(other)._mask;  // type: ignore
     }
 
     SquareSet SquareSet::operator<<(int shift) const {
-        return SquareSet((this->mask << shift) & BB_ALL);
+        return SquareSet((this->_mask << shift) & BB_ALL);
     }
 
     SquareSet SquareSet::operator>>(int shift) const {
-        return SquareSet(this->mask >> shift);
+        return SquareSet(this->_mask >> shift);
     }
 
     SquareSet SquareSet::operator<<=(int shift) {
-        this->mask = (this->mask << shift) & BB_ALL;
-        this->iter = scan_forward(this->mask);
+        this->_mask = (this->_mask << shift) & BB_ALL;
+        this->_iter = scan_forward(this->_mask);
         return *this;
     }
 
     SquareSet SquareSet::operator>>=(int shift) {
-        this->mask >>= shift;
-        this->iter = scan_forward(this->mask);
+        this->_mask >>= shift;
+        this->_iter = scan_forward(this->_mask);
         return *this;
     }
 
     SquareSet SquareSet::operator~() const {
-        return SquareSet(~this->mask & BB_ALL);
+        return SquareSet(~this->_mask & BB_ALL);
     }
 
     SquareSet::operator unsigned long int() const {
-        return this->mask;
+        return this->_mask;
     }
 
     SquareSet::operator std::string() const {
@@ -4719,7 +4591,7 @@ namespace chess {
 
         for (Square square : SQUARES_180) {
             Bitboard mask = BB_SQUARES[square];
-            builder.push_back(this->mask & mask ? '1' : '.');
+            builder.push_back(this->_mask & mask ? '1' : '.');
 
             if (!(mask & BB_FILE_H)) {
                 builder.push_back(' ');
@@ -4729,6 +4601,10 @@ namespace chess {
         }
 
         return std::string(std::begin(builder), std::end(builder));
+    }
+
+    Bitboard SquareSet::get_mask() const {
+        return this->_mask;
     }
 
     SquareSet SquareSet::ray(Square a, Square b) {
@@ -4785,9 +4661,10 @@ namespace chess {
         */
         return SquareSet(BB_SQUARES[square]);
     }
+
     std::ostream &operator<<(std::ostream &os, const SquareSet &square_set) {
         std::stringstream ss;
-        ss << std::hex << square_set.mask;
+        ss << std::hex << square_set.get_mask();
         std::string s = ss.str();
         s = std::string(16 - s.length(), '0') + s;
         for (int i = 4; i < 16; i += 5) {
@@ -4797,11 +4674,6 @@ namespace chess {
         return os;
     }
 }
-template <> struct std::hash<chess::Piece> {
-    int operator()(const chess::Piece &piece) const {
-        return piece.piece_type + (piece.color ? -1 : 5);
-    }
-};
 
 int main() {
 }
