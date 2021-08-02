@@ -2777,9 +2777,7 @@ namespace chess {
                 }
             }
         }
-        if (i < s.length()) {
-            parts.push_back(s.substr(i));
-        }
+        parts.push_back(s.substr(i - 1));
         
         // Parse ops.
         if (parts.size() > 4) {
@@ -2789,31 +2787,36 @@ namespace chess {
                 joined += " ";
             }
             joined.resize(joined.size() - 1);
-            std::cout << joined << std::endl;
             auto operations = this->_parse_epd_ops(parts.back(), [&]() -> Board {return Board(joined + " 0 1");});
             parts.pop_back();
             if (operations.find("hmvc") != std::end(operations)) {
                 if (std::holds_alternative<std::string>(operations.at("hmvc"))) {
-                    joined += " " + std::get<std::string>(operations.at("hmvc"));
+                    parts.push_back(std::get<std::string>(operations.at("hmvc")));
                 } else if (std::holds_alternative<int>(operations.at("hmvc"))) {
-                    joined += " " + std::to_string(std::get<int>(operations.at("hmvc")));
+                    parts.push_back(std::to_string(std::get<int>(operations.at("hmvc"))));
                 } else {
-                    joined += " " + std::to_string(int(std::get<float>(operations.at("hmvc"))));
+                    parts.push_back(std::to_string(int(std::get<float>(operations.at("hmvc")))));
                 }
             } else {
-                joined += " 0";
+                parts.push_back("0");
             }
             if (operations.find("fmvn") != std::end(operations)) {
                 if (std::holds_alternative<std::string>(operations.at("fmvn"))) {
-                    joined += " " + std::get<std::string>(operations.at("fmvn"));
+                    parts.push_back(std::get<std::string>(operations.at("fmvn")));
                 } else if (std::holds_alternative<int>(operations.at("fmvn"))) {
-                    joined += " " + std::to_string(std::get<int>(operations.at("fmvn")));
+                    parts.push_back(std::to_string(std::get<int>(operations.at("fmvn"))));
                 } else {
-                    joined += " " + std::to_string(int(std::get<float>(operations.at("fmvn"))));
+                    parts.push_back(std::to_string(int(std::get<float>(operations.at("fmvn")))));
                 }
             } else {
-                joined += " 1";
+                parts.push_back("1");
             }
+            joined = "";
+            for (std::string s : parts) {
+                joined += s;
+                joined += " ";
+            }
+            joined.resize(joined.size() - 1);
             this->set_fen(joined);
             return operations;
         } else {
@@ -3780,7 +3783,7 @@ namespace chess {
 
         std::vector<std::optional<char>> v(std::begin(operation_part), std::end(operation_part));
         v.push_back(std::nullopt);
-        for (std::optional<char> ch : operation_part) {
+        for (std::optional<char> ch : v) {
             if (state == "opcode") {
                 if (ch && (*ch == ' ' || *ch == '\t' || *ch == '\r' || *ch == '\n')) {
                     if (opcode == "-") {
