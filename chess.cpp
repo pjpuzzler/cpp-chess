@@ -11,8 +11,6 @@ and XBoard/UCI engine communication.
 
 #include "chess.h"
 
-#include <iostream>
-
 namespace chess {
     char piece_symbol(PieceType piece_type) {
         return PIECE_SYMBOLS[piece_type];
@@ -301,15 +299,13 @@ namespace chess {
 
     Piece::Piece(PieceType piece_type, Color color) : piece_type(piece_type), color(color) {}
 
-    Piece::Piece() {}
-
     char Piece::symbol() const {
         /*
         Gets the symbol ``P``, ``N``, ``B``, ``R``, ``Q`` or ``K`` for white
         pieces or the lower-case variants for the black pieces.
         */
         char symbol = piece_symbol(this->piece_type);
-        return this->color ? toupper(symbol) : symbol;
+        return this->color ? std::toupper(symbol) : symbol;
     }
 
 
@@ -317,13 +313,13 @@ namespace chess {
         /*
         Gets the Unicode character for the piece.
         */
-        char symbol = invert_color ? isupper(this->symbol()) ? tolower(this->symbol()) : toupper(this->symbol()) : this->symbol();
+        char symbol = invert_color ? std::isupper(this->symbol()) ? std::tolower(this->symbol()) : std::toupper(this->symbol()) : this->symbol();
         return UNICODE_PIECE_SYMBOLS.at(symbol);
     }
 
 
     Piece::operator std::string() const {
-        return std::to_string(this->symbol());
+        return std::string(1, this->symbol());
     }
 
     Piece Piece::from_symbol(char symbol) {
@@ -332,11 +328,11 @@ namespace chess {
 
         :throws: :exc:`std::invalid_argument` if the symbol is invalid.
         */
-        auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(symbol));
+        auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), std::tolower(symbol));
         if (it == std::end(PIECE_SYMBOLS)) {
             throw std::invalid_argument("symbol is invalid");
         }
-        return Piece(std::distance(PIECE_SYMBOLS, it), toupper(symbol));
+        return Piece(std::distance(PIECE_SYMBOLS, it), std::isupper(symbol));
     }
     std::ostream &operator<<(std::ostream &os, const Piece &piece) {
         os << "Piece::from_symbol('" << piece.symbol() << "')";
@@ -357,7 +353,7 @@ namespace chess {
         The UCI representation of a null move is ``0000``.
         */
         if (this->drop) {
-            return std::to_string(toupper(piece_symbol(*this->drop))) + "@" + SQUARE_NAMES[this->to_square];
+            return std::string(1, std::toupper(piece_symbol(*this->drop))) + "@" + SQUARE_NAMES[this->to_square];
         } else if (this->promotion) {
             return SQUARE_NAMES[this->from_square] + SQUARE_NAMES[this->to_square] + piece_symbol(*this->promotion);
         } else if (*this) {
@@ -389,7 +385,7 @@ namespace chess {
         if (uci == "0000") {
             return Move::null();
         } else if (uci.length() == 4 && '@' == uci[1]) {
-            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(uci[0]));
+            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), std::tolower(uci[0]));
             if (it == std::end(PIECE_SYMBOLS)) {
                 throw std::invalid_argument("");
             }
@@ -777,7 +773,7 @@ namespace chess {
         */
         std::unordered_map<Square, Piece> result;
         for (Square square : scan_reversed(this->occupied & mask)) {
-            result[square] = *this->piece_at(square);
+            result.insert({square, *this->piece_at(square)});
         }
         return result;
     }
@@ -818,13 +814,12 @@ namespace chess {
         if (this->promoted) {
             return std::nullopt;
         }
-
+        
         // Piece counts.
-        std::vector<Bitboard> brnqk = {this->bishops, this->rooks, this->knights, this->queens, this->kings};
         if (popcount(this->bishops) != 4 || popcount(this->rooks) != 4 || popcount(this->knights) != 4 || popcount(this->queens) != 2 || popcount(this->kings) != 2) {
             return std::nullopt;
         }
-
+        
         // Symmetry.
         if (((BB_RANK_1 & this->bishops) << 56 != (BB_RANK_8 & this->bishops)) || ((BB_RANK_1 & this->rooks) << 56 != (BB_RANK_8 & this->rooks)) || ((BB_RANK_1 & this->knights) << 56 != (BB_RANK_8 & this->knights)) || ((BB_RANK_1 & this->queens) << 56 != (BB_RANK_8 & this->queens)) || ((BB_RANK_1 & this->kings) << 56 != (BB_RANK_8 & this->kings))) {
             return std::nullopt;
@@ -851,7 +846,7 @@ namespace chess {
         bool n0f = false;
         bool n1f = false;
         int rf = 0;
-        std::vector<int> n0s = {0, 4, 7, 9};
+        int n0s[] = {0, 4, 7, 9};
         for (Square square = A1; square <= H1; ++square) {
             Bitboard bb = BB_SQUARES[square];
             if (bb & this->queens) {
@@ -886,7 +881,7 @@ namespace chess {
                 }
             }
         }
-
+        
         if (n0 < 4 && n1f && qf) {
             cc_pos += q * 16;
             int krn = n0s[n0] + n1;
@@ -1214,7 +1209,7 @@ namespace chess {
         if (fen.find(' ') != std::string::npos) {
             throw std::invalid_argument("expected position part of fen, got multiple parts: '" + fen + "'");
         }
-
+        
         // Ensure the FEN is valid.
         std::vector<std::string> rows;
         for (size_t i = 0, dist = 0; i < fen.length(); ++i, ++dist) {
@@ -1228,7 +1223,7 @@ namespace chess {
         if (rows.size() != 8) {
             throw std::invalid_argument("expected 8 rows in position part of fen: '" + fen + "'");
         }
-
+        
         // Validate each row.
         for (const std::string &row : rows) {
             int field_sum = 0;
@@ -1240,7 +1235,7 @@ namespace chess {
                     if (previous_was_digit) {
                         throw std::invalid_argument("two subsequent digits in position part of fen: '" + fen + "'");
                     }
-                    field_sum += int(c - '0');
+                    field_sum += c - '0';
                     previous_was_digit = true;
                     previous_was_piece = false;
                 } else if (c == '~') {
@@ -1249,7 +1244,7 @@ namespace chess {
                     }
                     previous_was_digit = false;
                     previous_was_piece = false;
-                } else if (std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(c)) != std::end(PIECE_SYMBOLS)) {
+                } else if (std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), std::tolower(c)) != std::end(PIECE_SYMBOLS)) {
                     ++field_sum;
                     previous_was_digit = false;
                     previous_was_piece = true;
@@ -1262,16 +1257,16 @@ namespace chess {
                 throw std::invalid_argument("expected 8 columns per row in position part of fen: '" + fen + "'");
             }
         }
-
+        
         // Clear the board.
         this->_clear_board();
-
+        
         // Put pieces on the board.
         int square_index = 0;
         for (char c : fen) {
             if (c == '1' || c == '2' || c == '3' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8') {
-                square_index += int(c);
-            } else if (std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(c)) != std::end(PIECE_SYMBOLS)) {
+                square_index += c - '0';
+            } else if (std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), std::tolower(c)) != std::end(PIECE_SYMBOLS)) {
                 Piece piece = Piece::from_symbol(c);
                 this->_set_piece_at(SQUARES_180[square_index], piece.piece_type, piece.color);
                 ++square_index;
@@ -1330,9 +1325,9 @@ namespace chess {
                     this->knights |= BB_FILES[i] & BB_BACKRANKS;
                     used.push_back(i);
                 }
+                --n1;
+                --n2;
             }
-            --n1;
-            --n2;
         }
 
         // RKR.
@@ -1434,7 +1429,7 @@ namespace chess {
         this->chess960 = chess960;
 
         this->ep_square = std::nullopt;
-
+        
         if (fen == std::nullopt) {
             this->clear();
         } else if (*fen == Board::starting_fen) {
@@ -2091,7 +2086,7 @@ namespace chess {
         };
         std::unordered_map<std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>>, int, transposition_hash> transpositions;
         ++transpositions[transposition_key];
-
+        
         // Count positions.
         std::stack<Move> switchyard;
         while (!this->move_stack.empty()) {
@@ -2104,7 +2099,7 @@ namespace chess {
 
             ++transpositions[this->_transposition_key()];
         }
-
+        
         while (!switchyard.empty()) {
             this->push(switchyard.top());
             switchyard.pop();
@@ -2114,11 +2109,11 @@ namespace chess {
         if (transpositions.at(transposition_key) >= 3) {
             return true;
         }
-
+        
         // The next legal move is a threefold repetition.
         for (const Move &move : this->generate_legal_moves()) {
             this->push(move);
-            bool flag = transpositions.at(this->_transposition_key()) >= 2;
+            bool flag = transpositions.find(this->_transposition_key()) != std::end(transpositions) && transpositions.at(this->_transposition_key()) >= 2;
             this->pop();
             if (flag) {
                 return true;
@@ -2397,7 +2392,7 @@ namespace chess {
         std::vector<char> builder;
 
         for (Square square : scan_reversed(castling_rights & BB_RANK_1)) {
-            builder.push_back(toupper(FILE_NAMES[square_file(square)]));
+            builder.push_back(std::toupper(FILE_NAMES[square_file(square)]));
         }
 
         for (Square square : scan_reversed(castling_rights & BB_RANK_8)) {
@@ -2433,7 +2428,7 @@ namespace chess {
                     }
                 }
                 
-                builder.push_back(color == WHITE ? toupper(ch) : ch);
+                builder.push_back(color == WHITE ? std::toupper(ch) : ch);
             }
         }
         
@@ -2940,7 +2935,7 @@ namespace chess {
         std::string p = match[5].str();
         std::optional<PieceType> promotion;
         if (!p.empty()) {
-            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(p.front()));
+            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), std::tolower(p.front()));
             if (it == std::end(PIECE_SYMBOLS)) {
                 throw std::invalid_argument("");
             }
@@ -2968,7 +2963,7 @@ namespace chess {
 
         // Filter by piece type.
         if (!match[1].str().empty()) {
-            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), tolower(match[1].str().front()));
+            auto it = std::find(std::begin(PIECE_SYMBOLS), std::end(PIECE_SYMBOLS), std::tolower(match[1].str().front()));
             if (it == std::end(PIECE_SYMBOLS) || match[1].str().length() > 1) {
                 throw std::invalid_argument("");
             }
@@ -3207,7 +3202,7 @@ namespace chess {
             if (!(this->occupied_co[BLACK] & this->kings & ~this->promoted & BB_E8)) {
                 black_castling = 0;
             }
-
+            
             return white_castling | black_castling;
         } else {
             // The kings must be on the back rank.
@@ -3672,8 +3667,8 @@ namespace chess {
         this->castling_rights = BB_EMPTY;
 
         for (char flag : castling_fen) {
-            Color color = isupper(flag) ? WHITE : BLACK;
-            flag = tolower(flag);
+            Color color = std::isupper(flag) ? WHITE : BLACK;
+            flag = std::tolower(flag);
             Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
             Bitboard rooks = this->occupied_co[color] & this->rooks & backrank;
             std::optional<Square> king = this->king(color);
@@ -3950,7 +3945,7 @@ namespace chess {
         if (move.drop) {
             std::string san = "";
             if (*move.drop != PAWN) {
-                san = toupper(piece_symbol(*move.drop));
+                san = std::toupper(piece_symbol(*move.drop));
             }
             san += "@" + SQUARE_NAMES[move.to_square];
             return san;
@@ -3973,7 +3968,7 @@ namespace chess {
 
         std::string san;
         if (*piece_type != PAWN) {
-            san = toupper(piece_symbol(*piece_type));
+            san = std::toupper(piece_symbol(*piece_type));
         }
 
         if (long_) {
@@ -4027,7 +4022,7 @@ namespace chess {
 
         // Promotion.
         if (move.promotion) {
-            san += "=" + std::string(1, toupper(piece_symbol(*move.promotion)));
+            san += "=" + std::string(1, std::toupper(piece_symbol(*move.promotion)));
         }
 
         return san;
