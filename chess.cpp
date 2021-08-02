@@ -88,27 +88,27 @@ namespace chess {
 
 
     int lsb(Bitboard bb) {
-        return std::bitset<32>(bb & -bb).size() - 1;
+        return std::numeric_limits<Bitboard>::digits - std::countl_zero(bb & -bb) - 1;
     }
 
     std::vector<Square> scan_forward(Bitboard bb) {
         std::vector<Square> iter;
         while (bb) {
             Bitboard r = bb & -bb;
-            iter.push_back(std::bitset<32>(r).count() - 1);
+            iter.push_back(std::numeric_limits<Bitboard>::digits - std::countl_zero(r) - 1);
             bb ^= r;
         }
         return iter;
     }
 
     int msb(Bitboard bb) {
-        return std::bitset<32>(bb).size() - 1;
+        return std::numeric_limits<Bitboard>::digits - std::countl_zero(bb) - 1;
     }
 
     std::vector<Square> scan_reversed(Bitboard bb) {
         std::vector<Square> iter;
         while (bb) {
-            Square r = std::bitset<32>(bb).count() - 1;
+            Square r = std::numeric_limits<Bitboard>::digits - std::countl_zero(bb) - 1;
             iter.push_back(r);
             bb ^= BB_SQUARES[r];
         }
@@ -2409,7 +2409,7 @@ namespace chess {
 
     std::string Board::castling_xfen() const {
         std::vector<char> builder;
-
+        
         for (Color color : COLORS) {
             std::optional<Square> king = this->king(color);
             if (king == std::nullopt) {
@@ -2418,13 +2418,13 @@ namespace chess {
 
             int king_file = square_file(*king);
             Bitboard backrank = color == WHITE ? BB_RANK_1 : BB_RANK_8;
-
+            
             for (Square rook_square : scan_reversed(this->clean_castling_rights() & backrank)) {
                 int rook_file = square_file(rook_square);
                 bool a_side = rook_file < king_file;
 
                 Bitboard other_rooks = this->occupied_co[color] & this->rooks & backrank & ~BB_SQUARES[rook_square];
-
+                
                 char ch = a_side ? 'q' : 'k';
                 for (Square other : scan_reversed(other_rooks)) {
                     if ((square_file(other) < rook_file) == a_side) {
@@ -2432,11 +2432,11 @@ namespace chess {
                         break;
                     }
                 }
-
+                
                 builder.push_back(color == WHITE ? toupper(ch) : ch);
             }
         }
-
+        
         if (!builder.empty()) {
             return std::string(std::begin(builder), std::end(builder));
         } else {
@@ -2724,12 +2724,12 @@ namespace chess {
         } else {
             ep_square = this->has_legal_en_passant() ? this->ep_square : std::nullopt;
         }
-
+        
         std::vector<std::string> epd = {this->board_fen(promoted),
                                 this->turn == WHITE ? "w" : "b",
                                 shredder ? this->castling_shredder_fen() : this->castling_xfen(),
                                 ep_square != std::nullopt ? SQUARE_NAMES[*ep_square] : "-"};
-
+        
         if (!operations.empty()) {
             epd.push_back(this->_epd_operations(operations));
         }
@@ -3593,8 +3593,20 @@ namespace chess {
         be ``false``, or an integer to copy a limited number of moves.
         */
         BaseBoard board_copy = BaseBoard::copy();
-        Board board = Board(board_copy.board_fen(), this->chess960);
+        Board board = Board(STARTING_FEN, this->chess960);
 
+        board.pawns = this->pawns;
+        board.knights = this->knights;
+        board.bishops = this->bishops;
+        board.rooks = this->rooks;
+        board.queens = this->queens;
+        board.kings = this->kings;
+
+        board.occupied_co[WHITE] = this->occupied_co[WHITE];
+        board.occupied_co[BLACK] = this->occupied_co[BLACK];
+        board.occupied = this->occupied;
+        board.promoted = this->promoted;
+        
         board.ep_square = this->ep_square;
         board.castling_rights = this->castling_rights;
         board.turn = this->turn;
@@ -4673,7 +4685,4 @@ namespace chess {
         os << "SquareSet(" << "0x" << s << ")";
         return os;
     }
-}
-
-int main() {
 }

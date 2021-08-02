@@ -12,9 +12,11 @@ and XBoard/UCI engine communication.
 #include <string>
 #include <unordered_map>
 #include <stdexcept>
+#include <limits>
 #include <algorithm>
 #include <cmath>
 #include <bitset>
+#include <bit>
 #include <vector>
 #include <tuple>
 #include <regex>
@@ -248,7 +250,7 @@ namespace chess {
 
     std::vector<Square> scan_reversed(Bitboard);
 
-    std::function<int(Bitboard)> popcount = [](Bitboard bb) -> int {return std::bitset<32>(bb).count();};
+    std::function<int(Bitboard)> popcount = [](Bitboard bb) -> int {return std::bitset<64>(bb).count();};
 
     Bitboard flip_vertical(Bitboard);
 
