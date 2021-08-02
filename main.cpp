@@ -4,5 +4,6 @@
 int main() {
     chess::Board board;
     // board.set_chess960_pos(275);
-    std::cout << board.promoted;
+    board.set_epd("bnrknrqb/pppppppp/8/8/8/8/PPPPPPPP/BNRKNRQB w KQkq -");
+    std::cout << board;
 }

@@ -629,9 +629,6 @@ namespace chess {
         int halfmove_clock;
         /* The number of half-moves since the last capture or pawn move. */
 
-        Bitboard promoted;
-        /* A bitmask of pieces that have been promoted. */
-
         bool chess960;
         /*
         Whether the board is in Chess960 mode. In Chess960 castling moves are
@@ -798,10 +795,10 @@ namespace chess {
         std::optional<int> chess960_pos(bool = false, bool = false, bool = true) const;
 
 
-        std::string epd(bool = false, const _EnPassantSpec & = "legal", std::optional<bool> = std::nullopt, const std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>> & = {});
+        std::string epd(bool = false, const _EnPassantSpec & = "legal", std::optional<bool> = std::nullopt, const std::unordered_map<std::string, std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>> & = {});
 
 
-        std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>> set_epd(const std::string &);
+        std::unordered_map<std::string, std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>> set_epd(const std::string &);
 
 
         std::string san(const Move &);
@@ -904,7 +901,7 @@ namespace chess {
         static Board empty(bool = false);
 
 
-        static std::tuple<Board, std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>>> from_epd(const std::string &, bool = false);
+        static std::tuple<Board, std::unordered_map<std::string, std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>>> from_epd(const std::string &, bool = false);
 
 
         static Board from_chess960_pos(int);
@@ -920,9 +917,9 @@ namespace chess {
 
         void _set_castling_fen(const std::string &);
 
-        std::string _epd_operations(const std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>> &);
+        std::string _epd_operations(const std::unordered_map<std::string, std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>> &);
 
-        std::unordered_map<std::string, std::optional<std::variant<std::string, int, float, Move, std::vector<Move>>>> _parse_epd_ops(const std::string &, const std::function<Board()> &) const;
+        std::unordered_map<std::string, std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>> _parse_epd_ops(const std::string &, const std::function<Board()> &) const;
 
         std::string _algebraic(const Move &, bool = false);
 
