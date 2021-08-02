@@ -2767,18 +2767,20 @@ namespace chess {
         for (int i = 0; getline(iss, s2, ' ') && i < 4; ++i) {
             parts.push_back(s2);
         }
-        int i;
-        for (int i = 0, splits = 0; i < s.length() - 1 && splits < 4; ++i) {
-            if (isspace(s[i + 1])) {
+        int i, splits;
+        for (i = 0, splits = 0; i < s.length() && splits < 4; ++i) {
+            if (isspace(s[i])) {
                 ++splits;
                 ++i;
-                while (i < s.length() - 1 && isspace(s[i + 1])) {
+                while (i < s.length() && isspace(s[i])) {
                     ++i;
                 }
             }
         }
-        parts.push_back(s.substr(i));
-
+        if (i < s.length()) {
+            parts.push_back(s.substr(i));
+        }
+        
         // Parse ops.
         if (parts.size() > 4) {
             std::string joined;
@@ -2787,26 +2789,27 @@ namespace chess {
                 joined += " ";
             }
             joined.resize(joined.size() - 1);
+            std::cout << joined << std::endl;
             auto operations = this->_parse_epd_ops(parts.back(), [&]() -> Board {return Board(joined + " 0 1");});
             parts.pop_back();
             if (operations.find("hmvc") != std::end(operations)) {
-                if (std::holds_alternative<std::string>(operations["hmvc"])) {
-                    joined += " " + std::get<std::string>(operations["hmvc"]);
-                } else if (std::holds_alternative<int>(operations["hmvc"])) {
-                    joined += " " + std::to_string(std::get<int>(operations["hmvc"]));
+                if (std::holds_alternative<std::string>(operations.at("hmvc"))) {
+                    joined += " " + std::get<std::string>(operations.at("hmvc"));
+                } else if (std::holds_alternative<int>(operations.at("hmvc"))) {
+                    joined += " " + std::to_string(std::get<int>(operations.at("hmvc")));
                 } else {
-                    joined += " " + std::to_string(int(std::get<float>(operations["hmvc"])));
+                    joined += " " + std::to_string(int(std::get<float>(operations.at("hmvc"))));
                 }
             } else {
                 joined += " 0";
             }
             if (operations.find("fmvn") != std::end(operations)) {
-                if (std::holds_alternative<std::string>(operations["fmvn"])) {
-                    joined += " " + std::get<std::string>(operations["fmvn"]);
-                } else if (std::holds_alternative<int>(operations["fmvn"])) {
-                    joined += " " + std::to_string(std::get<int>(operations["fmvn"]));
+                if (std::holds_alternative<std::string>(operations.at("fmvn"))) {
+                    joined += " " + std::get<std::string>(operations.at("fmvn"));
+                } else if (std::holds_alternative<int>(operations.at("fmvn"))) {
+                    joined += " " + std::to_string(std::get<int>(operations.at("fmvn")));
                 } else {
-                    joined += " " + std::to_string(int(std::get<float>(operations["fmvn"])));
+                    joined += " " + std::to_string(int(std::get<float>(operations.at("fmvn"))));
                 }
             } else {
                 joined += " 1";
@@ -3789,7 +3792,7 @@ namespace chess {
                     if (opcode == "-") {
                         opcode = "";
                         } else if (!opcode.empty()) {
-                            operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? std::vector<Move>() : std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>(std::nullopt);
+                            operations.insert_or_assign(opcode, opcode == "pv" || opcode == "am" || opcode == "bm" ? std::vector<Move>() : std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>(std::nullopt));
                             opcode = "";
                     }
                 } else {
@@ -3802,7 +3805,7 @@ namespace chess {
                     state = "string";
                 } else if (ch == std::nullopt || *ch == ';') {
                     if (!opcode.empty()) {
-                        operations[opcode] = opcode == "pv" || opcode == "am" || opcode == "bm" ? std::vector<Move>() : std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>(std::nullopt);
+                        operations.insert_or_assign(opcode, opcode == "pv" || opcode == "am" || opcode == "bm" ? std::vector<Move>() : std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>(std::nullopt));
                         opcode = "";
                     }
                     state = "opcode";
@@ -3820,9 +3823,9 @@ namespace chess {
                         if (!std::isfinite(parsed)) {
                             throw std::invalid_argument("invalid numeric operand for epd operation '" + opcode + "': '" + operand + "'");
                         }
-                        operations[opcode] = parsed;
+                        operations.insert_or_assign(opcode, parsed);
                     } else {
-                        operations[opcode] = stoi(operand);
+                        operations.insert_or_assign(opcode, stoi(operand));
                     }
                     opcode = "";
                     operand = "";
@@ -3832,7 +3835,7 @@ namespace chess {
                 }
             } else if (state == "string") {
                 if (ch == std::nullopt || *ch == '\"') {
-                    operations[opcode] = operand;
+                    operations.insert_or_assign(opcode, operand);
                     opcode = "";
                     operand = "";
                     state = "opcode";
@@ -3843,7 +3846,7 @@ namespace chess {
                 }
             } else if (state == "string_escape") {
                 if (ch == std::nullopt) {
-                    operations[opcode] = operand;
+                    operations.insert_or_assign(opcode, operand);
                     opcode = "";
                     operand = "";
                     state = "opcode";
@@ -3882,7 +3885,7 @@ namespace chess {
                             position->pop();
                         }
 
-                        operations[opcode] = variation;
+                        operations.insert_or_assign(opcode, variation);
                     } else if (opcode == "bm" || opcode == "am") {
                         // A set of moves.
                         std::istringstream iss(operand);
@@ -3891,10 +3894,10 @@ namespace chess {
                         for (const std::string &token : split) {
                             parsed.push_back(position->parse_xboard(token));
                         }
-                        operations[opcode] = parsed;
+                        operations.insert_or_assign(opcode, parsed);
                     } else {
                         // A single move.
-                        operations[opcode] = position->parse_xboard(operand);
+                        operations.insert_or_assign(opcode, position->parse_xboard(operand));
                     }
 
                     opcode = "";
