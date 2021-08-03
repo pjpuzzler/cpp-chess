@@ -140,6 +140,8 @@ namespace chess {
         /* See :func:`chess::Board::is_variant_draw()`. */
     };
 
+    std::ostream &operator<<(std::ostream &, Termination);
+
     class Outcome {
         /*
         Information about the outcome of an ended game, usually obtained from
@@ -158,6 +160,8 @@ namespace chess {
 
         std::string result() const;
     };
+
+    std::ostream &operator<<(std::ostream &, const Outcome &);
 
 
 

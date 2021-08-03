@@ -11,6 +11,8 @@ and XBoard/UCI engine communication.
 
 #include "chess.h"
 
+#include <iostream>
+
 namespace chess {
     char piece_symbol(PieceType piece_type) {
         return PIECE_SYMBOLS[piece_type];
@@ -22,11 +24,42 @@ namespace chess {
     }
 
 
+    std::ostream &operator<<(std::ostream &os, Termination termination) {
+        os << "Termination::";
+        if (termination == Termination::CHECKMATE) {
+            os << "CHECKMATE";
+        } else if (termination == Termination::STALEMATE) {
+            os << "STALEMATE";
+        } else if (termination == Termination::INSUFFICIENT_MATERIAL) {
+            os << "INSUFFICIENT_MATERIAL";
+        } else if (termination == Termination::SEVENTYFIVE_MOVES) {
+            os << "SEVENTYFIVE_MOVES";
+        } else if (termination == Termination::FIVEFOLD_REPETITION) {
+            os << "FIVEFOLD_REPETITION";
+        } else if (termination == Termination::FIFTY_MOVES) {
+            os << "FIFTY_MOVES";
+        } else if (termination == Termination::THREEFOLD_REPETITION) {
+            os << "THREEFOLD_REPETITION";
+        } else if (termination == Termination::VARIANT_WIN) {
+            os << "VARIANT_WIN";
+        } else if (termination == Termination::VARIANT_LOSS) {
+            os << "VARIANT_LOSS";
+        } else {
+            os << "VARIANT_DRAW";
+        }
+        return os;
+    }
+
     Outcome::Outcome(Termination termination, std::optional<Color> winner) : termination(termination), winner(winner) {}
 
     std::string Outcome::result() const {
         /* Returns ``1-0``, ``0-1`` or ``1/2-1/2``. */
         return this->winner == std::nullopt ? "1/2-1/2" : (*this->winner ? "1-0" : "0-1");
+    }
+
+    std::ostream &operator<<(std::ostream &os, const Outcome &outcome) {
+        os << "Outcome(termination=" << outcome.termination << ", winner=" << (outcome.winner == std::nullopt ? "std::nullopt" : *outcome.winner ? "true" : "false") << ")";
+        return os;
     }
 
 
@@ -418,11 +451,11 @@ namespace chess {
                 promotion = std::nullopt;
             }
             if (from_square == to_square) {
-                throw std::invalid_argument("invalid uci (use 0000 for null moves): '" + uci + "'");
+                throw std::invalid_argument("invalid uci (use 0000 for null moves): \"" + uci + "\"");
             }
             return Move(from_square, to_square, promotion);
         } else {
-            throw std::invalid_argument("expected uci string to be of length 4 or 5: '" + uci + "'");
+            throw std::invalid_argument("expected uci string to be of length 4 or 5: \"" + uci + "\"");
         }
     }
 
@@ -444,7 +477,7 @@ namespace chess {
         return Move(0, 0);
     }
     std::ostream &operator<<(std::ostream &os, const Move &move) {
-        os << "Move::from_uci('" << move.uci() << "')";
+        os << "Move::from_uci(\"" << move.uci() << "\")";
         return os;
     }
 
@@ -485,7 +518,7 @@ namespace chess {
         } else if (piece_type == KING) {
             bb = this->kings;
         } else {
-            throw "expected PieceType, got '" + std::to_string(piece_type) + "'";
+            throw "expected PieceType, got \"" + std::to_string(piece_type) + "\"";
         }
 
         return bb & this->occupied_co[color];
@@ -1207,7 +1240,7 @@ namespace chess {
         }
         fen = std::string(it, it2.base());
         if (fen.find(' ') != std::string::npos) {
-            throw std::invalid_argument("expected position part of fen, got multiple parts: '" + fen + "'");
+            throw std::invalid_argument("expected position part of fen, got multiple parts: \"" + fen + "\"");
         }
         
         // Ensure the FEN is valid.
@@ -1221,7 +1254,7 @@ namespace chess {
             }
         }
         if (rows.size() != 8) {
-            throw std::invalid_argument("expected 8 rows in position part of fen: '" + fen + "'");
+            throw std::invalid_argument("expected 8 rows in position part of fen: \"" + fen + "\"");
         }
         
         // Validate each row.
@@ -1233,14 +1266,14 @@ namespace chess {
             for (char c : row) {
                 if (c == '1' || c == '2' || c == '3' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8') {
                     if (previous_was_digit) {
-                        throw std::invalid_argument("two subsequent digits in position part of fen: '" + fen + "'");
+                        throw std::invalid_argument("two subsequent digits in position part of fen: \"" + fen + "\"");
                     }
                     field_sum += c - '0';
                     previous_was_digit = true;
                     previous_was_piece = false;
                 } else if (c == '~') {
                     if (!previous_was_piece) {
-                        throw std::invalid_argument("'~' not after piece in position part of fen: '" + fen + "'");
+                        throw std::invalid_argument("'~' not after piece in position part of fen: \"" + fen + "\"");
                     }
                     previous_was_digit = false;
                     previous_was_piece = false;
@@ -1249,12 +1282,12 @@ namespace chess {
                     previous_was_digit = false;
                     previous_was_piece = true;
                 } else {
-                    throw std::invalid_argument("invalid character in position part of fen: '" + fen + "'");
+                    throw std::invalid_argument("invalid character in position part of fen: \"" + fen + "\"");
                 }
             }
 
             if (field_sum != 8) {
-                throw std::invalid_argument("expected 8 columns per row in position part of fen: '" + fen + "'");
+                throw std::invalid_argument("expected 8 columns per row in position part of fen: \"" + fen + "\"");
             }
         }
         
@@ -1285,7 +1318,7 @@ namespace chess {
 
     void BaseBoard::_set_chess960_pos(int scharnagl) {
         if (!(0 <= scharnagl && scharnagl <= 959)) {
-            throw std::invalid_argument("chess960 position index not 0 <= '" + std::to_string(scharnagl) + "' <= 959");
+            throw std::invalid_argument("chess960 position index not 0 <= \"" + std::to_string(scharnagl) + "\" <= 959");
         }
 
         // See http://www.russellcottrell.com/Chess/Chess960.htm for
@@ -1360,7 +1393,7 @@ namespace chess {
         this->promoted = BB_EMPTY;
     }
     std::ostream &operator<<(std::ostream &os, const BaseBoard &board) {
-        os << "BaseBoard('" << board.board_fen() << "')";
+        os << "BaseBoard(\"" << board.board_fen() << "\")";
         return os;
     }
 
@@ -2201,7 +2234,7 @@ namespace chess {
         >>> board.push(Nf3);  // Make the move
 
         >>> std::cout << board.pop();  // Unmake the last move
-        Move::from_uci('g1f3')
+        Move::from_uci("g1f3")
 
         Null moves just increment the move counters, switch turns and forfeit
         en passant capturing.
@@ -2513,7 +2546,7 @@ namespace chess {
             } else if (turn_part == "b") {
                 turn = BLACK;
             } else {
-                throw std::invalid_argument("expected 'w' or 'b' for turn part of fen: '" + fen + "'");
+                throw std::invalid_argument("expected 'w' or 'b' for turn part of fen: \"" + fen + "\"");
             }
         } else {
             turn = WHITE;
@@ -2526,7 +2559,7 @@ namespace chess {
             parts.pop_front();
 
             if (!regex_match(castling_part, FEN_CASTLING_REGEX)) {
-                throw std::invalid_argument("invalid castling part in fen: '" + fen + "'");
+                throw std::invalid_argument("invalid castling part in fen: \"" + fen + "\"");
             }
         } else {
             castling_part = "-";
@@ -2542,7 +2575,7 @@ namespace chess {
             if (ep_part != "-") {
                 auto it = std::find(std::begin(SQUARE_NAMES), std::end(SQUARE_NAMES), ep_part);
                 if (it == std::end(SQUARE_NAMES)) {
-                    throw std::invalid_argument("invalid en passant part in fen: '" + fen + "'");
+                    throw std::invalid_argument("invalid en passant part in fen: \"" + fen + "\"");
                 }
                 ep_square = std::distance(SQUARE_NAMES, it);
             } else {
@@ -2562,11 +2595,11 @@ namespace chess {
             try {
                 halfmove_clock = stoi(halfmove_part);
             } catch (std::invalid_argument) {
-                throw std::invalid_argument("invalid half-move clock in fen: '" + fen + "'");
+                throw std::invalid_argument("invalid half-move clock in fen: \"" + fen + "\"");
             }
 
             if (halfmove_clock < 0) {
-                throw std::invalid_argument("half-move clock cannot be negative: '" + fen + "'");
+                throw std::invalid_argument("half-move clock cannot be negative: \"" + fen + "\"");
             }
         } else {
             halfmove_clock = 0;
@@ -2583,11 +2616,11 @@ namespace chess {
             try {
                 fullmove_number = stoi(fullmove_part);
             } catch (std::invalid_argument) {
-                throw std::invalid_argument("invalid fullmove number in fen: '" + fen + "'");
+                throw std::invalid_argument("invalid fullmove number in fen: \"" + fen + "\"");
             }
 
             if (fullmove_number < 0) {
-                throw std::invalid_argument("fullmove number cannot be negative: '" + fen + "'");
+                throw std::invalid_argument("fullmove number cannot be negative: \"" + fen + "\"");
             }
 
             fullmove_number = std::max(fullmove_number, 1);
@@ -2597,7 +2630,7 @@ namespace chess {
 
         // All parts should be consumed now.
         if (!parts.empty()) {
-            throw std::invalid_argument("fen string has more parts than expected: '" + fen + "'");
+            throw std::invalid_argument("fen string has more parts than expected: \"" + fen + "\"");
         }
 
         // Validate the board part and set it.
@@ -2780,14 +2813,15 @@ namespace chess {
         
         // Parse ops.
         if (parts.size() > 4) {
+            std::string back = parts.back();
+            parts.pop_back();
             std::string joined;
             for (std::string s : parts) {
                 joined += s;
                 joined += " ";
             }
             joined.resize(joined.size() - 1);
-            auto operations = this->_parse_epd_ops(parts.back(), [&]() -> Board {return Board(joined + " 0 1");});
-            parts.pop_back();
+            auto operations = this->_parse_epd_ops(back, [&]() -> Board {return Board(joined + " 0 1");});
             if (operations.find("hmvc") != std::end(operations)) {
                 if (std::holds_alternative<std::string>(operations.at("hmvc"))) {
                     parts.push_back(std::get<std::string>(operations.at("hmvc")));
@@ -2912,7 +2946,7 @@ namespace chess {
                 throw std::out_of_range("");
             }
         } catch (std::out_of_range) {
-            throw std::invalid_argument("illegal san: '" + san + "' in" + this->fen());
+            throw std::invalid_argument("illegal san: \"" + san + "\" in" + this->fen());
         }
 
         // Match normal moves.
@@ -2923,9 +2957,9 @@ namespace chess {
             if (san == "--" || san == "Z0" || san == "0000" || san == "@@@@") {
                 return Move::null();
             } else if (san.find(',') != std::string::npos) {
-                throw std::invalid_argument("unsupported multi-leg move: '" + san + "'");
+                throw std::invalid_argument("unsupported multi-leg move: \"" + san + "\"");
             } else {
-                throw std::invalid_argument("invalid san: '" + san + "'");
+                throw std::invalid_argument("invalid san: \"" + san + "\"");
             }
         }
 
@@ -2982,7 +3016,7 @@ namespace chess {
             if (move.promotion == promotion) {
                 return move;
             } else {
-                throw std::invalid_argument("missing promotion piece type: '" + san + "' in " + this->fen());
+                throw std::invalid_argument("missing promotion piece type: \"" + san + "\" in " + this->fen());
             }
         } else {
             from_mask &= this->pawns;
@@ -2996,14 +3030,14 @@ namespace chess {
             }
 
             if (matched_move) {
-                throw std::invalid_argument("ambiguous san: '" + san + "' in " + this->fen());
+                throw std::invalid_argument("ambiguous san: \"" + san + "\" in " + this->fen());
             }
 
             matched_move = move;
         }
 
         if (!matched_move) {
-            throw std::invalid_argument("illegal san: '" + san + "' in " + this->fen());
+            throw std::invalid_argument("illegal san: \"" + san + "\" in " + this->fen());
         }
 
         return *matched_move;
@@ -3063,7 +3097,7 @@ namespace chess {
         move = this->_from_chess960(this->chess960, move.from_square, move.to_square, move.promotion, move.drop);
 
         if (!this->is_legal(move)) {
-            throw std::invalid_argument("illegal uci: '" + uci + "' in " + this->fen());
+            throw std::invalid_argument("illegal uci: \"" + uci + "\" in " + this->fen());
         }
 
         return move;
@@ -3667,7 +3701,7 @@ namespace chess {
         }
 
         if (!regex_match(castling_fen, FEN_CASTLING_REGEX)) {
-            throw std::invalid_argument("invalid castling fen: '" + castling_fen + "'");
+            throw std::invalid_argument("invalid castling fen: \"" + castling_fen + "\"");
         }
 
         this->castling_rights = BB_EMPTY;
@@ -3714,7 +3748,7 @@ namespace chess {
             }
             for (char blacklisted : {' ', '\n', '\t', '\r'}) {
                 if (opcode.find(blacklisted) != std::string::npos) {
-                    throw "invalid character ' ' in epd opcode: '" + opcode + "'";
+                    throw "invalid character ' ' in epd opcode: \"" + opcode + "\"";
                 }
             }
 
@@ -3823,7 +3857,7 @@ namespace chess {
                     if (operand.find('.') != std::string::npos || operand.find('e') != std::string::npos || operand.find('E') != std::string::npos) {
                         float parsed = stof(operand);
                         if (!std::isfinite(parsed)) {
-                            throw std::invalid_argument("invalid numeric operand for epd operation '" + opcode + "': '" + operand + "'");
+                            throw std::invalid_argument("invalid numeric operand for epd operation \"" + opcode + "\": \"" + operand + "\"");
                         }
                         operations.insert_or_assign(opcode, parsed);
                     } else {
@@ -4247,9 +4281,9 @@ namespace chess {
     }
     std::ostream &operator<<(std::ostream &os, Board board) {
         if (!board.chess960) {
-            os << "Board('" << board.fen() << "')";
+            os << "Board(\"" << board.fen() << "\")";
         } else {
-            os << "Board('" << board.fen() << "', chess960=true)";
+            os << "Board(\"" << board.fen() << "\", chess960=true)";
         }
         return os;
     }
