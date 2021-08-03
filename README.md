@@ -1,4 +1,4 @@
-# niklasfs-python-chess-in-cpp
+# niklasf's python-chess in C++
 
 This is a line-for-line remake of niklasf's 'python-chess' in C++
 All credit for the original code and algorithms go to niklasf and his credits
