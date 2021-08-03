@@ -10,7 +10,6 @@ and XBoard/UCI engine communication.
 */
 
 #include "chess.h"
-#include <iostream>
 
 namespace chess {
     char piece_symbol(PieceType piece_type) {
