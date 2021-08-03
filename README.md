@@ -60,7 +60,7 @@ Features
       >>> board.push(Nf3);  // Make the move
 
       >>> std::cout << board.pop();  // Unmake the last move
-      Move.from_uci("g1f3")
+      Move::from_uci("g1f3")
   ```
 
 * Show a simple ASCII board.
