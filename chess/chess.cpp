@@ -520,7 +520,7 @@ namespace chess {
         } else if (piece_type == KING) {
             bb = this->kings;
         } else {
-            throw "expected PieceType, got \"" + std::to_string(piece_type) + "\"";
+            throw std::runtime_error("expected PieceType, got \"" + std::to_string(piece_type) + "\"");
         }
 
         return bb & this->occupied_co[color];
@@ -2290,7 +2290,7 @@ namespace chess {
         bool promoted = bool(this->promoted & from_bb);
         std::optional<PieceType> piece_type = this->_remove_piece_at(move.from_square);
         if (piece_type == std::nullopt) {
-            throw "push() expects move to be pseudo-legal, but got " + std::string(move) + " in " + this->board_fen();
+            throw std::runtime_error("push() expects move to be pseudo-legal, but got " + std::string(move) + " in " + this->board_fen());
         }
         Square capture_square = move.to_square;
         std::optional<PieceType> captured_piece_type = this->piece_type_at(capture_square);
@@ -3749,11 +3749,11 @@ namespace chess {
 
         for (auto [opcode, operand] : operations) {
             if (opcode == "-") {
-                throw "dash (-) is not a valid epd opcode";
+                throw std::runtime_error("dash (-) is not a valid epd opcode");
             }
             for (char blacklisted : {' ', '\n', '\t', '\r'}) {
                 if (opcode.find(blacklisted) != std::string::npos) {
-                    throw "invalid character ' ' in epd opcode: \"" + opcode + "\"";
+                    throw std::runtime_error("invalid character ' ' in epd opcode: \"" + opcode + "\"");
                 }
             }
 
@@ -3775,7 +3775,7 @@ namespace chess {
                 epd.insert(std::end(epd), std::begin(s), std::end(s));
             } else if (std::holds_alternative<float>(operand)) {
                 if (!std::isfinite(std::get<float>(operand))) {
-                    throw "expected numeric epd operand to be finite, got: " + std::to_string(std::get<float>(operand));
+                    throw std::runtime_error("expected numeric epd operand to be finite, got: " + std::to_string(std::get<float>(operand)));
                 }
                 std::string s = " " + std::to_string(std::get<float>(operand)) + ";";
                 epd.insert(std::end(epd), std::begin(s), std::end(s));
@@ -4004,17 +4004,17 @@ namespace chess {
                 return "O-O";
             }
         }
-
+        
         std::optional<PieceType> piece_type = this->piece_type_at(move.from_square);
         if (!piece_type) {
-            throw "san() and lan() expect move to be legal or null, but got " + std::string(move) + " in " + this->fen();
+            throw std::runtime_error("san() and lan() expect move to be legal or null, but got " + std::string(move) + " in " + this->fen());
         }
         bool capture = this->is_capture(move);
-
+        
         if (*piece_type != PAWN) {
             san = std::toupper(piece_symbol(*piece_type));
         }
-
+        
         if (long_) {
             san += SQUARE_NAMES[move.from_square];
         } else if (*piece_type != PAWN) {
