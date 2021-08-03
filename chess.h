@@ -1166,7 +1166,11 @@ namespace chess {
 
         operator bool() const;
 
-        bool operator==(const IntoSquareSet &) const;
+        bool operator==(const Bitboard &) const;
+
+        bool operator==(const SquareSet &) const;
+
+        bool operator==(const std::vector<Square> &) const;
 
         SquareSet operator<<(int) const;
 

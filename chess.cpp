@@ -4568,7 +4568,15 @@ namespace chess {
         return bool(this->_mask);
     }
 
-    bool SquareSet::operator==(const IntoSquareSet &other) const {
+    bool SquareSet::operator==(const Bitboard &other) const {
+        return this->_mask == other;  // type: ignore
+    }
+    
+    bool SquareSet::operator==(const SquareSet &other) const {
+        return this->_mask == other._mask;  // type: ignore
+    }
+
+    bool SquareSet::operator==(const std::vector<Square> &other) const {
         return this->_mask == SquareSet(other)._mask;  // type: ignore
     }
 
@@ -4639,7 +4647,7 @@ namespace chess {
         . . . . 1 . . .
         . . . . . 1 . .
         */
-        return SquareSet(ray(a, b));
+        return SquareSet(chess::ray(a, b));
     }
 
     SquareSet SquareSet::between(Square a, Square b) {
@@ -4660,7 +4668,7 @@ namespace chess {
         . . . . . . . .
         . . . . . . . .
         */
-        return SquareSet(between(a, b));
+        return SquareSet(chess::between(a, b));
     }
 
     SquareSet SquareSet::from_square(Square square) {
