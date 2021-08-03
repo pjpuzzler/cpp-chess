@@ -967,6 +967,8 @@ namespace chess {
         auto end() const;
 
         Board get_board() const;
+
+        operator std::vector<Move>() const;
     
     private:
         Board _board;
@@ -990,6 +992,8 @@ namespace chess {
         auto end() const;
 
         Board get_board() const;
+
+        operator std::vector<Move>() const;
     
     private:
         Board _board;
@@ -1192,6 +1196,8 @@ namespace chess {
 
         Bitboard get_mask() const;
 
+        operator std::vector<Square>() const;
+
         static SquareSet ray(Square, Square);
 
         static SquareSet between(Square, Square);
@@ -1202,7 +1208,7 @@ namespace chess {
         Bitboard _mask;
         std::vector<Square> _iter;
     };
-    
+
     std::ostream &operator<<(std::ostream &, const SquareSet &);
 }
 

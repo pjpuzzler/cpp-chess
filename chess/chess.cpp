@@ -4320,6 +4320,10 @@ namespace chess {
         return this->_board;
     }
 
+    PseudoLegalMoveGenerator::operator std::vector<Move>() const {
+        return this->_iter;
+    }
+
     std::ostream &operator<<(std::ostream &os, PseudoLegalMoveGenerator pseudo_legal_move_generator) {
         std::vector<std::string> builder;
 
@@ -4364,6 +4368,10 @@ namespace chess {
 
     Board LegalMoveGenerator::get_board() const {
         return this->_board;
+    }
+
+    LegalMoveGenerator::operator std::vector<Move>() const {
+        return this->_iter;
     }
 
     std::ostream &operator<<(std::ostream &os, LegalMoveGenerator legal_move_generator) {
@@ -4665,6 +4673,10 @@ namespace chess {
 
     Bitboard SquareSet::get_mask() const {
         return this->_mask;
+    }
+
+    SquareSet::operator std::vector<Square>() const {
+        return this->_iter;
     }
 
     SquareSet SquareSet::ray(Square a, Square b) {
