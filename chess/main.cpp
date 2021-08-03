@@ -9,7 +9,7 @@ int main() {
             std::cout << board.unicode(false, true) << std::endl;
 
             std::string san;
-            std::cout << board.ply() << (board.turn ? " [WHITE]" : " [BLACK]") << " Enter Move: ";
+            std::cout << board.ply() + 1 << ". " << (board.turn ? "[WHITE] " : "[BLACK] ") << "Enter Move: ";
             std::cin >> san;
             std::cout << std::endl;
 
@@ -21,7 +21,7 @@ int main() {
                 board.push(move);
                 break;
             } catch (std::invalid_argument) {
-                std::cout << std::endl << "Invalid Move, Try Again..." << std::endl;
+                std::cout << "Invalid Move, Try Again..." << std::endl;
             }
         }
     }
