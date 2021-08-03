@@ -341,6 +341,7 @@ namespace chess {
 
         static Piece from_symbol(char);
     };
+
     std::ostream &operator<<(std::ostream &, const Piece &);
 
 
@@ -382,6 +383,7 @@ namespace chess {
 
         static Move null();
     };
+
     std::ostream &operator<<(std::ostream &, const Move &);
 
 
@@ -511,6 +513,7 @@ namespace chess {
 
         void _set_chess960_pos(int);
     };
+
     std::ostream &operator<<(std::ostream &, const BaseBoard &);
 
 
@@ -945,6 +948,7 @@ namespace chess {
 
         std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>> _transposition_key() const;
     };
+
     std::ostream &operator<<(std::ostream &, Board);
 
 
@@ -968,6 +972,7 @@ namespace chess {
         Board _board;
         std::vector<Move> _iter;
     };
+
     std::ostream &operator<<(std::ostream &, PseudoLegalMoveGenerator);
 
 
@@ -990,6 +995,7 @@ namespace chess {
         Board _board;
         std::vector<Move> _iter;
     };
+
     std::ostream &operator<<(std::ostream &, LegalMoveGenerator);
 
 
@@ -1196,6 +1202,7 @@ namespace chess {
         Bitboard _mask;
         std::vector<Square> _iter;
     };
+    
     std::ostream &operator<<(std::ostream &, const SquareSet &);
 }
 

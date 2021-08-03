@@ -367,6 +367,7 @@ namespace chess {
         }
         return Piece(std::distance(PIECE_SYMBOLS, it), std::isupper(symbol));
     }
+
     std::ostream &operator<<(std::ostream &os, const Piece &piece) {
         os << "Piece::from_symbol('" << piece.symbol() << "')";
         return os;
@@ -476,6 +477,7 @@ namespace chess {
         */
         return Move(0, 0);
     }
+
     std::ostream &operator<<(std::ostream &os, const Move &move) {
         os << "Move::from_uci(\"" << move.uci() << "\")";
         return os;
@@ -1392,6 +1394,7 @@ namespace chess {
         this->occupied = BB_RANK_1 | BB_RANK_2 | BB_RANK_7 | BB_RANK_8;
         this->promoted = BB_EMPTY;
     }
+
     std::ostream &operator<<(std::ostream &os, const BaseBoard &board) {
         os << "BaseBoard(\"" << board.board_fen() << "\")";
         return os;
@@ -2112,11 +2115,13 @@ namespace chess {
         be replayed because there is no incremental transposition table.
         */
         auto transposition_key = this->_transposition_key();
+
         struct transposition_hash {
             size_t operator()(const std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>> &key) const {
                 return std::hash<Bitboard>()(std::get<0>(key)) ^ std::hash<Bitboard>()(std::get<1>(key)) ^ std::hash<Bitboard>()(std::get<2>(key)) ^ std::hash<Bitboard>()(std::get<3>(key)) ^ std::hash<Bitboard>()(std::get<4>(key)) ^ std::hash<Bitboard>()(std::get<5>(key)) ^ std::hash<Bitboard>()(std::get<6>(key)) ^ std::hash<Bitboard>()(std::get<7>(key)) ^ std::hash<Color>()(std::get<8>(key)) ^ std::hash<Bitboard>()(std::get<9>(key)) ^ (std::get<10>(key) ? std::hash<Square>()(*std::get<10>(key)) : std::hash<int>()(64));
             }
         };
+        
         std::unordered_map<std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>>, int, transposition_hash> transpositions;
         ++transpositions[transposition_key];
         
@@ -3810,8 +3815,8 @@ namespace chess {
     std::unordered_map<std::string, std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>> Board::_parse_epd_ops(const std::string &operation_part, const std::function<Board()> &make_board) const {
         std::unordered_map<std::string, std::variant<std::nullopt_t, std::string, int, float, Move, std::vector<Move>>> operations;
         std::string state = "opcode";
-        std::string opcode = "";
-        std::string operand = "";
+        std::string opcode;
+        std::string operand;
         std::optional<Board> position = std::nullopt;
 
         std::vector<std::optional<char>> v(std::begin(operation_part), std::end(operation_part));
@@ -3982,8 +3987,8 @@ namespace chess {
         }
 
         // Drops.
+        std::string san;
         if (move.drop) {
-            std::string san = "";
             if (*move.drop != PAWN) {
                 san = std::toupper(piece_symbol(*move.drop));
             }
@@ -4006,7 +4011,6 @@ namespace chess {
         }
         bool capture = this->is_capture(move);
 
-        std::string san;
         if (*piece_type != PAWN) {
             san = std::toupper(piece_symbol(*piece_type));
         }
@@ -4279,6 +4283,7 @@ namespace chess {
                             this->turn, this->clean_castling_rights(),
                             this->has_legal_en_passant() ? this->ep_square : std::nullopt);
     }
+
     std::ostream &operator<<(std::ostream &os, Board board) {
         if (!board.chess960) {
             os << "Board(\"" << board.fen() << "\")";
