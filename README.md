@@ -26,25 +26,25 @@ cpp-chess:
     0
 
     >>> std::cout << board.push_san("e4");
-    Move::from_uci('e2e4')
+    Move::from_uci("e2e4")
     >>> std::cout << board.push_san("e5");
-    Move::from_uci('e7e5')
+    Move::from_uci("e7e5")
     >>> std::cout << board.push_san("Qh5");
-    Move::from_uci('d1h5')
+    Move::from_uci("d1h5")
     >>> std::cout << board.push_san("Nc6");
-    Move::from_uci('b8c6')
+    Move::from_uci("b8c6")
     >>> std::cout << board.push_san("Bc4");
-    Move::from_uci('f1c4')
+    Move::from_uci("f1c4")
     >>> std::cout << board.push_san("Nf6");
-    Move::from_uci('g8f6')
+    Move::from_uci("g8f6")
     >>> std::cout << board.push_san("Qxf7");
-    Move::from_uci('h5f7')
+    Move::from_uci("h5f7")
 
     >>> std::cout << board.is_checkmate();
     1
 
     >>> std::cout << board;
-    Board('r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4')
+    Board("r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4")
 ```
 
 Features
@@ -60,7 +60,7 @@ Features
       >>> board.push(Nf3);  // Make the move
 
       >>> std::cout << board.pop();  // Unmake the last move
-      Move.from_uci('g1f3')
+      Move.from_uci("g1f3")
   ```
 
 * Show a simple ASCII board.
@@ -150,7 +150,7 @@ Features
       >>> std::cout << board.san(chess::Move(chess::E2, chess::E4));
       e4
       >>> std::cout << board.parse_san("Nf3");
-      Move::from_uci('g1f3')
+      Move::from_uci("g1f3")
       >>> std::cout << board.variation_san({chess::Move::from_uci("e2e4"), chess::Move::from_uci("e7e5"), chess::Move::from_uci("g1f3")});
       1. e4 e5 2. Nf3
   ```
