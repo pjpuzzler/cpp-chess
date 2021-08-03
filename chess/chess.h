@@ -45,8 +45,8 @@ namespace chess {
 
     typedef int PieceType;
     const PieceType PIECE_TYPES[] = {1, 2, 3, 4, 5, 6}, PAWN = 1, KNIGHT = 2, BISHOP = 3, ROOK = 4, QUEEN = 5, KING = 6;
-    const char PIECE_SYMBOLS[] = {'\0', 'p', 'n', 'b', 'r', 'q', 'k'};
-    const std::string PIECE_NAMES[] = {"", "pawn", "knight", "bishop", "rook", "queen", "king"};
+    const std::optional<char> PIECE_SYMBOLS[] = {std::nullopt, 'p', 'n', 'b', 'r', 'q', 'k'};
+    const std::optional<std::string> PIECE_NAMES[] = {std::nullopt, "pawn", "knight", "bishop", "rook", "queen", "king"};
 
     char piece_symbol(PieceType);
 

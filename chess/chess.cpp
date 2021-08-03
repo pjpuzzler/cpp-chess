@@ -15,12 +15,12 @@ and XBoard/UCI engine communication.
 
 namespace chess {
     char piece_symbol(PieceType piece_type) {
-        return PIECE_SYMBOLS[piece_type];
+        return *PIECE_SYMBOLS[piece_type];
     }
 
 
     std::string piece_name(PieceType piece_type) {
-        return PIECE_NAMES[piece_type];
+        return *PIECE_NAMES[piece_type];
     }
 
 
@@ -2118,7 +2118,7 @@ namespace chess {
 
         struct transposition_hash {
             size_t operator()(const std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>> &key) const {
-                return std::hash<Bitboard>()(std::get<0>(key)) ^ std::hash<Bitboard>()(std::get<1>(key)) ^ std::hash<Bitboard>()(std::get<2>(key)) ^ std::hash<Bitboard>()(std::get<3>(key)) ^ std::hash<Bitboard>()(std::get<4>(key)) ^ std::hash<Bitboard>()(std::get<5>(key)) ^ std::hash<Bitboard>()(std::get<6>(key)) ^ std::hash<Bitboard>()(std::get<7>(key)) ^ std::hash<Color>()(std::get<8>(key)) ^ std::hash<Bitboard>()(std::get<9>(key)) ^ (std::get<10>(key) ? std::hash<Square>()(*std::get<10>(key)) : std::hash<int>()(64));
+                return std::hash<Bitboard>()(std::get<0>(key)) ^ std::hash<Bitboard>()(std::get<1>(key)) ^ std::hash<Bitboard>()(std::get<2>(key)) ^ std::hash<Bitboard>()(std::get<3>(key)) ^ std::hash<Bitboard>()(std::get<4>(key)) ^ std::hash<Bitboard>()(std::get<5>(key)) ^ std::hash<Bitboard>()(std::get<6>(key)) ^ std::hash<Bitboard>()(std::get<7>(key)) ^ std::hash<Color>()(std::get<8>(key)) ^ std::hash<Bitboard>()(std::get<9>(key)) ^ std::hash<Square>()(std::get<10>(key) ? *std::get<10>(key) : 64);
             }
         };
         
