@@ -2117,12 +2117,12 @@ namespace chess {
         auto transposition_key = this->_transposition_key();
 
         struct transposition_hash {
-            size_t operator()(const std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>> &key) const {
-                return std::hash<Bitboard>()(std::get<0>(key)) ^ std::hash<Bitboard>()(std::get<1>(key)) ^ std::hash<Bitboard>()(std::get<2>(key)) ^ std::hash<Bitboard>()(std::get<3>(key)) ^ std::hash<Bitboard>()(std::get<4>(key)) ^ std::hash<Bitboard>()(std::get<5>(key)) ^ std::hash<Bitboard>()(std::get<6>(key)) ^ std::hash<Bitboard>()(std::get<7>(key)) ^ std::hash<Color>()(std::get<8>(key)) ^ std::hash<Bitboard>()(std::get<9>(key)) ^ std::hash<Square>()(std::get<10>(key) ? *std::get<10>(key) : 64);
+            size_t operator()(const std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, Square> &key) const {
+                return std::hash<Bitboard>()(std::get<0>(key)) ^ std::hash<Bitboard>()(std::get<1>(key)) ^ std::hash<Bitboard>()(std::get<2>(key)) ^ std::hash<Bitboard>()(std::get<3>(key)) ^ std::hash<Bitboard>()(std::get<4>(key)) ^ std::hash<Bitboard>()(std::get<5>(key)) ^ std::hash<Bitboard>()(std::get<6>(key)) ^ std::hash<Bitboard>()(std::get<7>(key)) ^ std::hash<Color>()(std::get<8>(key)) ^ std::hash<Bitboard>()(std::get<9>(key)) ^ std::hash<Square>()(std::get<10>(key));
             }
         };
         
-        std::unordered_map<std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>>, int, transposition_hash> transpositions;
+        std::unordered_map<std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, Square>, int, transposition_hash> transpositions;
         ++transpositions[transposition_key];
         
         // Count positions.
@@ -4276,12 +4276,12 @@ namespace chess {
         return move;
     }
 
-    std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>> Board::_transposition_key() const {
+    std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, Square> Board::_transposition_key() const {
         return std::make_tuple(this->pawns, this->knights, this->bishops, this->rooks,
                             this->queens, this->kings,
                             this->occupied_co[WHITE], this->occupied_co[BLACK],
                             this->turn, this->clean_castling_rights(),
-                            this->has_legal_en_passant() ? this->ep_square : std::nullopt);
+                            this->has_legal_en_passant() ? *this->ep_square : 64);
     }
 
     std::ostream &operator<<(std::ostream &os, Board board) {

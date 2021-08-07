@@ -946,7 +946,7 @@ namespace chess {
 
         Move _to_chess960(const Move &) const;
 
-        std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, std::optional<Square>> _transposition_key() const;
+        std::tuple<Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Bitboard, Color, Bitboard, Square> _transposition_key() const;
     };
 
     std::ostream &operator<<(std::ostream &, Board);
