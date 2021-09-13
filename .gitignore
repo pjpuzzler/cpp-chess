@@ -1,3 +1,4 @@
 chess/main
 .DS_Store
 .vscode/settings.json
+chess/.vscode/settings.json
