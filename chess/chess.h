@@ -587,19 +587,19 @@ namespace chess
         */
 
     public:
-        static std::string aliases[6];
+        static std::string aliases[];
         static std::optional<std::string> uci_variant;
         static std::optional<std::string> xboard_variant;
         static std::string starting_fen;
 
         static std::optional<std::string> tbw_suffix;
         static std::optional<std::string> tbz_suffix;
-        static std::optional<unsigned char> tbw_magic[4];
-        static std::optional<unsigned char> tbz_magic[4];
+        static std::optional<std::array<unsigned char, 4>> tbw_magic;
+        static std::optional<std::array<unsigned char, 4>> tbz_magic;
         static std::optional<std::string> pawnless_tbw_suffix;
         static std::optional<std::string> pawnless_tbz_suffix;
-        static std::optional<unsigned char> pawnless_tbw_magic;
-        static std::optional<unsigned char> pawnless_tbz_magic;
+        static std::optional<std::array<unsigned char, 4>> pawnless_tbw_magic;
+        static std::optional<std::array<unsigned char, 4>> pawnless_tbz_magic;
         static bool connected_kings;
         static bool one_king;
         static bool captures_compulsory;
