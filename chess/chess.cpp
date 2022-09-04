@@ -525,7 +525,7 @@ namespace chess
                 throw std::invalid_argument("");
             }
             Square from_square = std::distance(SQUARE_NAMES, it);
-            auto it2 = std::find(std::begin(SQUARE_NAMES), std::end(SQUARE_NAMES), uci.substr(2, 4));
+            auto it2 = std::find(std::begin(SQUARE_NAMES), std::end(SQUARE_NAMES), uci.substr(2, 2));
             if (it2 == std::end(SQUARE_NAMES))
             {
                 throw std::invalid_argument("");
