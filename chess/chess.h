@@ -914,9 +914,9 @@ namespace chess
 
         int count() const;
 
-        auto begin() const;
+        std::vector<Move>::const_iterator begin() const;
 
-        auto end() const;
+        std::vector<Move>::const_iterator end() const;
 
         Board get_board() const;
 
@@ -939,9 +939,9 @@ namespace chess
 
         int count() const;
 
-        auto begin() const;
+        std::vector<Move>::const_iterator begin() const;
 
-        auto end() const;
+        std::vector<Move>::const_iterator end() const;
 
         Board get_board() const;
 
