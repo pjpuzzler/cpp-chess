@@ -1399,6 +1399,10 @@ namespace chess
         std::optional<PieceType> piece_type = this->piece_type_at(square);
         Bitboard mask = BB_SQUARES[square];
 
+        if (!piece_type)
+        {
+            return std::nullopt;
+        }
         if (*piece_type == PAWN)
         {
             this->pawns ^= mask;
