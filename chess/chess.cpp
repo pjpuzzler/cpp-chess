@@ -662,7 +662,7 @@ namespace chess
         {
             Bitboard mask = BB_SQUARES[square];
             Color color = bool(this->occupied_co[WHITE] & mask);
-            return Piece(*piece_type, color);
+            return Piece(piece_type.value(), color);
         }
         else
         {
@@ -889,7 +889,7 @@ namespace chess
         */
         Color color = bool(this->occupied_co[WHITE] & BB_SQUARES[square]);
         std::optional<PieceType> piece_type = this->_remove_piece_at(square);
-        return piece_type ? std::optional(Piece(*piece_type, color)) : std::nullopt;
+        return piece_type ? std::optional(Piece(piece_type.value(), color)) : std::nullopt;
     }
 
     void BaseBoard::set_piece_at(Square square, const std::optional<Piece> &piece, bool promoted)
@@ -1403,27 +1403,27 @@ namespace chess
         {
             return std::nullopt;
         }
-        if (*piece_type == PAWN)
+        if (piece_type.value() == PAWN)
         {
             this->pawns ^= mask;
         }
-        else if (*piece_type == KNIGHT)
+        else if (piece_type.value() == KNIGHT)
         {
             this->knights ^= mask;
         }
-        else if (*piece_type == BISHOP)
+        else if (piece_type.value() == BISHOP)
         {
             this->bishops ^= mask;
         }
-        else if (*piece_type == ROOK)
+        else if (piece_type.value() == ROOK)
         {
             this->rooks ^= mask;
         }
-        else if (*piece_type == QUEEN)
+        else if (piece_type.value() == QUEEN)
         {
             this->queens ^= mask;
         }
-        else if (*piece_type == KING)
+        else if (piece_type.value() == KING)
         {
             this->kings ^= mask;
         }
@@ -2701,7 +2701,7 @@ namespace chess
 
         // Update castling rights.
         this->castling_rights &= ~to_bb & ~from_bb;
-        if (*piece_type == KING && !promoted)
+        if (piece_type.value() == KING && !promoted)
         {
             if (this->turn == WHITE)
             {
@@ -2725,7 +2725,7 @@ namespace chess
         }
 
         // Handle special pawn moves.
-        if (*piece_type == PAWN)
+        if (piece_type.value() == PAWN)
         {
             int diff = move.to_square - move.from_square;
 
@@ -2754,7 +2754,7 @@ namespace chess
         }
 
         // Castling.
-        bool castling = *piece_type == KING && this->occupied_co[this->turn] & to_bb;
+        bool castling = piece_type.value() == KING && this->occupied_co[this->turn] & to_bb;
         if (castling)
         {
             bool a_side = square_file(move.to_square) < square_file(move.from_square);
@@ -2778,7 +2778,7 @@ namespace chess
         if (!castling)
         {
             bool was_promoted = bool(this->promoted & to_bb);
-            this->_set_piece_at(move.to_square, *piece_type, this->turn, promoted);
+            this->_set_piece_at(move.to_square, piece_type.value(), this->turn, promoted);
 
             if (captured_piece_type)
             {
@@ -4789,22 +4789,22 @@ namespace chess
         }
         bool capture = this->is_capture(move);
 
-        if (*piece_type != PAWN)
+        if (piece_type.value() != PAWN)
         {
-            san = std::toupper(piece_symbol(*piece_type));
+            san = std::toupper(piece_symbol(piece_type.value()));
         }
 
         if (long_)
         {
             san += SQUARE_NAMES[move.from_square];
         }
-        else if (*piece_type != PAWN)
+        else if (piece_type.value() != PAWN)
         {
             // Get ambiguous move candidates.
             // Relevant candidates: not exactly the current move,
             // but to the same square.
             Bitboard others = 0;
-            Bitboard from_mask = this->pieces_mask(*piece_type, this->turn);
+            Bitboard from_mask = this->pieces_mask(piece_type.value(), this->turn);
             from_mask &= ~BB_SQUARES[move.from_square];
             Bitboard to_mask = BB_SQUARES[move.to_square];
             for (const Move &candidate : this->generate_legal_moves(from_mask, to_mask))
