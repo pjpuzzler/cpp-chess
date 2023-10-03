@@ -8,10 +8,11 @@ The original source code can be found here: https://github.com/niklasf/python-ch
 A chess library with move generation and validation,
 and XBoard/UCI engine communication.
 */
-
-#include "chess.h"
-
+ 
+//#include "./chess.h"
+//#pragma once
 #include <iostream>
+#include "chess.h"
 
 namespace chess
 {
@@ -518,7 +519,7 @@ namespace chess
             return Move(square, square, drop);
         }
         else if (4 <= uci.length() && uci.length() <= 5)
-        {
+        {   
             auto it = std::find(std::begin(SQUARE_NAMES), std::end(SQUARE_NAMES), uci.substr(0, 2));
             if (it == std::end(SQUARE_NAMES))
             {
@@ -2592,7 +2593,7 @@ namespace chess
                 break;
             }
 
-            if (this->move_stack.size() < count - 1)
+            if (static_cast<int>(this->move_stack.size()) < count - 1)
             {
                 break;
             }
@@ -3302,13 +3303,13 @@ namespace chess
             parts.push_back(s2);
         }
         int i, splits;
-        for (i = 0, splits = 0; i < s.length() && splits < 4; ++i)
+        for (i = 0, splits = 0; i < static_cast<int>(s.length()) && splits < 4; ++i)
         {
             if (isspace(s[i]))
             {
                 ++splits;
                 ++i;
-                while (i < s.length() && isspace(s[i]))
+                while (i < static_cast<int>(s.length()) && isspace(s[i]))
                 {
                     ++i;
                 }
@@ -3767,7 +3768,7 @@ namespace chess
         rights and moves that cede en passant are irreversible.
 
         This method has false-negatives with forced lines. For example, a check
-        that will force the king to lose castling rights is not considered
+        that will force the king to losеcastling rights is not considered
         irreversible. Only the actual king move is.
         */
         return this->is_zeroing(move) || this->_reduces_castling_rights(move) || this->has_legal_en_passant();
@@ -4302,7 +4303,7 @@ namespace chess
         board.fullmove_number = this->fullmove_number;
         board.halfmove_clock = this->halfmove_clock;
 
-        if (std::holds_alternative<bool>(stack) && std::get<bool>(stack) || std::holds_alternative<int>(stack) && std::get<int>(stack))
+        if ((std::holds_alternative<bool>(stack) && std::get<bool>(stack)) || (std::holds_alternative<int>(stack) && std::get<int>(stack)))
         {
             stack = int(std::holds_alternative<bool>(stack) && std::get<bool>(stack) ? this->move_stack.size() : std::get<int>(stack));
             board.move_stack = std::vector(std::end(this->move_stack) - std::get<int>(stack), std::end(this->move_stack));
@@ -4869,8 +4870,8 @@ namespace chess
         Bitboard cr = this->clean_castling_rights();
         Bitboard touched = BB_SQUARES[move.from_square] ^ BB_SQUARES[move.to_square];
         return bool(touched & cr ||
-                    cr & BB_RANK_1 && touched & this->kings & this->occupied_co[WHITE] & ~this->promoted ||
-                    cr & BB_RANK_8 && touched & this->kings & this->occupied_co[BLACK] & ~this->promoted);
+                    (cr & BB_RANK_1 && touched & this->kings & this->occupied_co[WHITE] & ~this->promoted) ||
+                    (cr & BB_RANK_8 && touched & this->kings & this->occupied_co[BLACK] & ~this->promoted));
     }
 
     std::optional<Square> Board::_valid_ep_square() const
@@ -4937,8 +4938,8 @@ namespace chess
 
         Square last_double = *this->ep_square + (this->turn == WHITE ? -8 : 8);
 
-        Bitboard occupancy = (this->occupied & ~BB_SQUARES[last_double] &
-                                  ~BB_SQUARES[capturer] |
+        Bitboard occupancy = ((this->occupied & ~BB_SQUARES[last_double] &
+                                  ~BB_SQUARES[capturer]) |
                               BB_SQUARES[*this->ep_square]);
 
         // Horizontal attack on the fifth or fourth rank.
